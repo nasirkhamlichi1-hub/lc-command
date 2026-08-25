@@ -380,7 +380,7 @@ async function gateCheck() {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
   const hex = [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
   if (hex === GATE_HASH) {
-    sessionStorage.setItem('lc_gate', '1');
+    localStorage.setItem('lc_gate_until', String(Date.now() + 30 * 24 * 60 * 60 * 1000));
     document.getElementById('gate').style.display = 'none';
   } else {
     const el = document.getElementById('gateIn');
@@ -388,7 +388,7 @@ async function gateCheck() {
     el.value = '';
   }
 }
-if (sessionStorage.getItem('lc_gate') === '1') {
+if (parseInt(localStorage.getItem('lc_gate_until') || '0', 10) > Date.now() || sessionStorage.getItem('lc_gate') === '1') {
   document.getElementById('gate').style.display = 'none';
 }
 
@@ -845,6 +845,11 @@ function silentGmailRefresh() {
   });
 }
 
+// True when Gmail was set up permanently but the session needs one click to resume
+function gmailNeedsOneClick() {
+  return !CONN.gmailToken && !!CONN.googleClientId && !!localStorage.getItem('lc_gmail_granted');
+}
+
 async function gmailApi(path, opts) {
   if (!CONN.gmailToken) throw new Error('Gmail not connected');
   const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/' + path, {
@@ -1158,7 +1163,7 @@ function renderDash(m) {
         <button class="btn btn-ghost btn-sm" onclick="nav('inbox')">All mail →</button>
       </div>
       ${critical.length ? critical.slice(0, 6).map(e => mailRow(e, true)).join('') :
-        `<div class="empt">${CONN.gmailToken ? 'Nothing critical right now — inbox is calm' : 'Connect Gmail in Connections to begin monitoring'}</div>`}
+        `<div class="empt">${CONN.gmailToken ? 'Nothing critical right now — inbox is calm' : gmailNeedsOneClick() ? '<button class="btn btn-prim btn-sm" onclick="gmailRequestToken()">▶ Resume Gmail — one click, no password</button>' : 'Connect Gmail in Connections to begin monitoring'}</div>`}
     </div>
     <div>
       <div class="card mb-3">
@@ -1324,7 +1329,7 @@ function copyBrief() {
 function renderInbox(m) {
   const filter = curState.cat || 'all';
   const shown = EMAILS.filter(e => !e.archived && (filter === 'all' || e.cat === filter));
-  m.innerHTML = bc('Inbox Intelligence', 'Triage <em>Queue</em>', CONN.gmailToken ? `${EMAILS.filter(e=>!e.read&&!e.archived).length} unread · categorised and risk-scored automatically` : 'Connect Gmail to begin monitoring') +
+  m.innerHTML = bc('Inbox Intelligence', 'Triage <em>Queue</em>', CONN.gmailToken ? `${EMAILS.filter(e=>!e.read&&!e.archived).length} unread · categorised and risk-scored automatically` : gmailNeedsOneClick() ? 'Session paused — one click to resume' : 'Connect Gmail to begin monitoring') +
   `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
     <button class="btn btn-sm ${filter==='all'?'btn-prim':'btn-sec'}" onclick="nav('inbox')">All (${EMAILS.filter(e=>!e.archived).length})</button>
     ${Object.entries(MAIL_CATS).map(([k, c]) => {
@@ -1332,11 +1337,11 @@ function renderInbox(m) {
       return n ? `<button class="btn btn-sm ${filter===k?'btn-prim':'btn-sec'}" onclick="nav('inbox',{cat:'${k}'})" style="${filter!==k?`border-color:${c.color}40;`:''}">${c.label} (${n})</button>` : '';
     }).join('')}
     <div style="flex:1;"></div>
-    ${CONN.gmailToken ? `<button class="btn btn-gold btn-sm" onclick="gmailScan()">⟳ Scan now</button>` : `<button class="btn btn-prim btn-sm" onclick="gmailConnect()">Connect Gmail</button>`}
+    ${CONN.gmailToken ? `<button class="btn btn-gold btn-sm" onclick="gmailScan()">⟳ Scan now</button>` : gmailNeedsOneClick() ? `<button class="btn btn-prim btn-sm" onclick="gmailRequestToken()">▶ Resume Gmail</button>` : `<button class="btn btn-prim btn-sm" onclick="gmailConnect()">Connect Gmail</button>`}
     ${CONN.aiKey && EMAILS.some(e=>!e.aiSummary&&!e.archived) ? `<button class="btn btn-sec btn-sm" onclick="aiTriageBatch();toast('AI triage running…')">✦ AI triage</button>` : ''}
   </div>
   <div class="card">
-    ${shown.length ? shown.slice(0, 60).map(e => mailRow(e)).join('') : `<div class="empt">${CONN.gmailToken ? 'No messages in this category' : 'Nothing here yet — connect Gmail and press Scan'}</div>`}
+    ${shown.length ? shown.slice(0, 60).map(e => mailRow(e)).join('') : `<div class="empt">${CONN.gmailToken ? 'No messages in this category' : gmailNeedsOneClick() ? 'Session paused — press ▶ Resume Gmail above' : 'Nothing here yet — connect Gmail and press Scan'}</div>`}
   </div>`;
 }
 
@@ -2795,7 +2800,11 @@ render();
     scheduleGmailRefresh();
   } else if (CONN.googleClientId && localStorage.getItem('lc_gmail_granted')) {
     // Token expired while away — renew silently in the background
-    silentGmailRefresh().then(ok => { if (ok) { updateConnDots(); gmailScan(15); } });
+    silentGmailRefresh().then(ok => {
+      updateConnDots();
+      if (ok) { render(); gmailScan(15); toast('Gmail session restored ✓'); }
+      else { render(); } // re-render so the one-click Resume button appears
+    });
   }
 })();
 
