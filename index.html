@@ -2236,8 +2236,16 @@ function copyChatMsg(idx) {
 // ═══════════════════════════════════════════════════════════════
 function renderMyBoard(m) {
   const openCount = MY_TASKS.filter(t => t.col !== 'done').length;
-  m.innerHTML = bc('Command', 'My <em>Board</em>', `${openCount} open · add tasks here or just tell the Assistant — "add a task…"`) +
-  `<div style="display:flex;gap:13px;align-items:flex-start;">
+  m.innerHTML = bc('Command', 'My <em>Board</em>', `${openCount} open · or just tell the Assistant — "add a task…"`) +
+  `<div style="display:flex;gap:9px;margin-bottom:16px;align-items:center;">
+    <button class="btn btn-gold" onclick="kbQuickAdd()">+ New task</button>
+    <div style="flex:1;position:relative;">
+      <input id="kbFastAdd" type="text" placeholder="Or type a task and press Enter — e.g. Chase Nirvana EICR renewal"
+        style="width:100%;padding:9px 14px;border:1.5px solid var(--line2);border-radius:var(--rpill);font-family:var(--sans);font-size:12.5px;outline:none;background:var(--panel);"
+        onkeydown="if(event.key==='Enter'&&this.value.trim()){kbFastAdd(this.value.trim());this.value='';}">
+    </div>
+  </div>
+  <div style="display:flex;gap:13px;align-items:flex-start;">
     ${KB_COLS.map(col => {
       const tasks = MY_TASKS.filter(t => t.col === col.id);
       return `<div style="flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);"
@@ -2245,7 +2253,7 @@ function renderMyBoard(m) {
         <div style="padding:11px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;">
           <span style="font-family:var(--serif);font-size:13.5px;">${col.label}</span>
           <span class="pill gy">${tasks.length}</span>
-          ${col.id === 'todo' ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:14px;padding:2px 8px;" onclick="kbQuickAdd()">+</button>` : ''}
+          ${col.id === 'todo' ? `<button class="btn btn-sec btn-sm" style="margin-left:auto;font-weight:700;" onclick="kbQuickAdd()">+ Add</button>` : ''}
         </div>
         <div style="padding:9px;min-height:70px;">
           ${tasks.map(t => kbCard(t)).join('') || '<div style="font-size:11px;color:var(--t4);text-align:center;padding:14px;font-style:italic;">empty</div>'}
@@ -2279,6 +2287,16 @@ function kbDrop(ev, col) {
     persistChat(); updateBadges(); render();
   }
   _kbDragId = null;
+}
+
+function kbFastAdd(title) {
+  MY_TASKS.unshift({
+    id: 'mt_' + Date.now(), title, notes: '', due: null,
+    priority: 'medium', col: 'todo', created: new Date().toISOString(), source: 'manual',
+  });
+  persistChat(); updateBadges(); render(); toast('Task added ✓');
+  // Re-focus the fast-add box after re-render for rapid entry
+  setTimeout(() => { const el = document.getElementById('kbFastAdd'); if (el) el.focus(); }, 50);
 }
 
 function kbQuickAdd() {
