@@ -220,6 +220,16 @@ main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
   </div>
   <nav class="sb-nav">
     <div class="sb-label">Command</div>
+    <button class="nav-btn" data-pg="assistant" onclick="nav('assistant')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Assistant
+      <span class="nav-badge gold" style="display:flex;">AI</span>
+    </button>
+    <button class="nav-btn" data-pg="myboard" onclick="nav('myboard')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+      My Board
+      <span class="nav-badge" id="badgeBoard" style="display:none;">0</span>
+    </button>
     <button class="nav-btn on" data-pg="dash" onclick="nav('dash')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
       Command Deck
@@ -487,7 +497,9 @@ function nav(page, params) {
 
 function render() {
   const m = document.getElementById('mainBody');
-  if (curPage === 'dash') renderDash(m);
+  if (curPage === 'assistant') renderAssistant(m);
+  else if (curPage === 'myboard') renderMyBoard(m);
+  else if (curPage === 'dash') renderDash(m);
   else if (curPage === 'brief') renderBrief(m);
   else if (curPage === 'inbox') renderInbox(m);
   else if (curPage === 'drafts') renderDrafts(m);
@@ -519,6 +531,7 @@ function updateBadges() {
   setB('badgeRisk', risks);
   setB('badgeCerts', certs);
   setB('badgeSync', SYNC_QUEUE.filter(s => s.status === 'pending').length);
+  if (typeof MY_TASKS !== 'undefined') setB('badgeBoard', MY_TASKS.filter(t => t.col !== 'done').length);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1892,6 +1905,437 @@ function globalSearch(q) {
     ${!mails.length && !certs.length && !comp.length ? '<div class="empt">Nothing found</div>' : ''}
   `);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// ASSISTANT — conversational AI chief-of-staff with tool use
+// ═══════════════════════════════════════════════════════════════
+let CHAT = JSON.parse(localStorage.getItem('lc_chat') || '[]');
+let MY_TASKS = JSON.parse(localStorage.getItem('lc_my_tasks') || '[]');
+
+function persistChat() {
+  try {
+    localStorage.setItem('lc_chat', JSON.stringify(CHAT.slice(-60)));
+    localStorage.setItem('lc_my_tasks', JSON.stringify(MY_TASKS));
+  } catch (e) {}
+}
+
+const KB_COLS = [
+  { id: 'todo',  label: 'To do' },
+  { id: 'doing', label: 'In progress' },
+  { id: 'wait',  label: 'Waiting on' },
+  { id: 'done',  label: 'Done' },
+];
+
+// ── Business context snapshot for the AI ──────────────────────
+function buildBusinessContext() {
+  const unread = EMAILS.filter(e => !e.read && !e.archived);
+  const critMail = EMAILS.filter(e => (e.risk === 'critical' || e.risk === 'high') && !e.archived).slice(0, 10);
+  const risks = RISK_REGISTER.filter(r => !r.resolved).slice(0, 10);
+  const comp = (BOARD_CACHE.compliance?.items || []).filter(i => i.status !== 'Done');
+  const certs = (BOARD_CACHE.certs?.items || []);
+  const certBad = certs.filter(c => c.renewal === 'OVERDUE' || c.renewal === 'MISSING — no record' || (daysUntil(c.expiry) !== null && daysUntil(c.expiry) < 30));
+  const openTasks = MY_TASKS.filter(t => t.col !== 'done');
+  const pendingSync = SYNC_QUEUE.filter(s => s.status === 'pending');
+
+  return `LIVE BUSINESS SNAPSHOT (${new Date().toLocaleString('en-GB')})
+INBOX: ${unread.length} unread. High/critical: ${critMail.map(e => `[${e.cat}] ${e.fromName}: "${e.subject}"${e.aiSummary ? ' — ' + e.aiSummary : ''}`).join(' | ') || 'none'}
+MY BOARD (${openTasks.length} open): ${openTasks.map(t => `[${t.col}/${t.priority || 'med'}] ${t.title}${t.due ? ' due ' + t.due : ''}`).join(' | ') || 'empty'}
+RISK REGISTER: ${risks.map(r => `[${r.severity}] ${r.title}`).join(' | ') || 'clear'}
+COMPLIANCE ACTIONS (Monday, ${comp.length} open): critical/high: ${comp.filter(i => i.priority === 'Critical' || i.priority === 'High').map(i => `${i.name} (${i.homePerson || '?'}${i.due ? ', due ' + i.due : ''})`).slice(0, 10).join(' | ') || 'none'}
+CERTIFICATES (${certs.length} tracked, ${certBad.length} at risk): ${certBad.slice(0, 12).map(c => `${c.group?.title || '?'}: ${c.certType || c.name} — ${c.renewal}${c.expiry ? ' exp ' + c.expiry : ''}`).join(' | ') || 'all current'}
+SYNC QUEUE: ${pendingSync.length} pending pushes to Monday
+CONNECTIONS: Gmail ${CONN.gmailToken ? 'LIVE (' + (CONN.gmailEmail || '') + ')' : 'offline'} · Monday ${CONN.mondayToken ? 'LIVE' : 'offline'}`;
+}
+
+function buildAssistantSystem() {
+  return `You are the executive assistant and chief of staff to Nasir Khamlichi, Head of Legal & Compliance at Living Horizon — a CQC-regulated supported living provider operating 8 homes (Cornerstone, Eden, Utopia, Nirvana, Harmony, Peartree, Canalside, Ivy) with sister landlord company Brunel Management. Colleagues: Waqas Rehman (Director of Care), Sophia Kontny.
+
+You are direct, sharp, warm, and concise — a trusted senior aide, not a chatbot. British English. Use short paragraphs. When discussing the business, ground everything in the live snapshot below — cite specific emails, certificates, homes and actions by name. When asked for reports, write them properly structured and complete, ready to copy.
+
+DOCTRINE: evidence matters. A claim marked NOT VERIFIED is a guess. An empty search never proves absence. Incidents live on PCS, not Monday. Never present unverified claims as fact — flag them.
+
+TOOLS: You have tools to act. Use them decisively when Nasir asks you to do something (add tasks, send emails, push to Monday) — don't ask permission twice. When he asks you to email someone, prepare it with send_email; it shows him a one-click confirm card, so write the final version, not a draft to discuss. When adding tasks, infer sensible priority and due dates from context. Use get_business_data when you need detail beyond the snapshot.
+
+${buildBusinessContext()}`;
+}
+
+// ── Tool definitions for the Anthropic API ────────────────────
+const AI_TOOLS = [
+  {
+    name: 'create_task',
+    description: "Add a task to Nasir's personal board. Use when he asks to add/remember/track something, or when you both agree an action is needed.",
+    input_schema: { type: 'object', properties: {
+      title: { type: 'string', description: 'Short imperative task title' },
+      notes: { type: 'string', description: 'Optional detail' },
+      due: { type: 'string', description: 'Optional due date YYYY-MM-DD' },
+      priority: { type: 'string', enum: ['critical', 'high', 'medium', 'low'] },
+      column: { type: 'string', enum: ['todo', 'doing', 'wait'], description: 'Default todo' },
+    }, required: ['title'] },
+  },
+  {
+    name: 'move_task',
+    description: "Move or complete a task on Nasir's board by matching its title.",
+    input_schema: { type: 'object', properties: {
+      title_match: { type: 'string', description: 'Part of the task title to find' },
+      column: { type: 'string', enum: ['todo', 'doing', 'wait', 'done'] },
+    }, required: ['title_match', 'column'] },
+  },
+  {
+    name: 'send_email',
+    description: 'Prepare an email for Nasir to send via his Gmail. It appears as a one-click confirm card — write the FINAL version. Requires Gmail connected.',
+    input_schema: { type: 'object', properties: {
+      to: { type: 'string', description: 'Recipient email address' },
+      subject: { type: 'string' },
+      body: { type: 'string', description: 'Complete email body, plain text, signed off as Nasir Khamlichi, Head of Legal & Compliance, Living Horizon' },
+    }, required: ['to', 'subject', 'body'] },
+  },
+  {
+    name: 'push_to_monday',
+    description: 'Create an item on a Monday.com board. Boards: complianceActions (compliance issues), sharedTasks (general tasks), candidates (recruitment), onboarding (inductions), complaints, referrals.',
+    input_schema: { type: 'object', properties: {
+      board_key: { type: 'string', enum: ['complianceActions', 'sharedTasks', 'candidates', 'onboarding', 'complaints', 'referrals'] },
+      item_name: { type: 'string' },
+      update_text: { type: 'string', description: 'Optional context posted as an update on the item' },
+    }, required: ['board_key', 'item_name'] },
+  },
+  {
+    name: 'get_business_data',
+    description: 'Pull detailed live data beyond the snapshot: full email list, all compliance items, every certificate, all tasks, risk register.',
+    input_schema: { type: 'object', properties: {
+      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts'] },
+    }, required: ['area'] },
+  },
+];
+
+// ── Tool executor ─────────────────────────────────────────────
+async function executeAITool(name, input) {
+  try {
+    if (name === 'create_task') {
+      const t = {
+        id: 'mt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5),
+        title: input.title, notes: input.notes || '', due: input.due || null,
+        priority: input.priority || 'medium', col: input.column || 'todo',
+        created: new Date().toISOString(), source: 'assistant',
+      };
+      MY_TASKS.unshift(t); persistChat(); updateBadges();
+      return { ok: true, msg: `Task added to board: "${t.title}" (${t.col}, ${t.priority}${t.due ? ', due ' + t.due : ''})`, chip: '✓ Task added — ' + t.title };
+    }
+    if (name === 'move_task') {
+      const q = input.title_match.toLowerCase();
+      const t = MY_TASKS.find(x => x.title.toLowerCase().includes(q));
+      if (!t) return { ok: false, msg: `No task matching "${input.title_match}" found. Open tasks: ${MY_TASKS.filter(x => x.col !== 'done').map(x => x.title).join('; ')}` };
+      t.col = input.column; if (input.column === 'done') t.completedAt = new Date().toISOString();
+      persistChat(); updateBadges();
+      return { ok: true, msg: `Moved "${t.title}" to ${input.column}`, chip: (input.column === 'done' ? '✓ Completed — ' : '→ Moved — ') + t.title };
+    }
+    if (name === 'send_email') {
+      if (!CONN.gmailToken) return { ok: false, msg: 'Gmail is not connected. Tell Nasir to connect Gmail in Connections first.' };
+      return { ok: true, pendingMail: { to: input.to, subject: input.subject, body: input.body },
+        msg: 'Email prepared and shown to Nasir with a one-click Send button. Tell him it is ready to fire.', chip: '✉ Email prepared — ' + input.subject };
+    }
+    if (name === 'push_to_monday') {
+      const board = MONDAY_CONFIG.boards[input.board_key];
+      if (!board) return { ok: false, msg: 'Unknown board' };
+      if (CONN.mondayToken) {
+        const item = await mondayCreateItem(board.id, input.item_name, {});
+        if (input.update_text) await mondayAddUpdate(item.id, input.update_text);
+        logActivity('monday_push', { board: board.name, item: input.item_name, via: 'assistant' });
+        return { ok: true, msg: `Created "${input.item_name}" on ${board.name} (item ${item.id}). Link: https://livinghorizon.monday.com/boards/${board.id}/pulses/${item.id}`, chip: '📋 Pushed to ' + board.name };
+      }
+      SYNC_QUEUE.unshift({ id: 'sq_' + Date.now(), ts: new Date().toISOString(), itemName: input.item_name, boardKey: input.board_key, body: input.update_text || '', status: 'pending' });
+      persist(); updateBadges();
+      return { ok: true, msg: `Monday not connected — queued "${input.item_name}" for ${board.name} in the Sync Queue.`, chip: '⧗ Queued for ' + board.name };
+    }
+    if (name === 'get_business_data') {
+      const a = input.area;
+      if (a === 'emails') return { ok: true, msg: JSON.stringify(EMAILS.filter(e => !e.archived).slice(0, 40).map(e => ({ from: e.fromName, subject: e.subject, cat: e.cat, risk: e.risk, date: e.date, summary: e.aiSummary, snippet: (e.snippet || '').slice(0, 140) }))) };
+      if (a === 'compliance') return { ok: true, msg: JSON.stringify((BOARD_CACHE.compliance?.items || []).map(i => ({ name: i.name, priority: i.priority, status: i.status, home: i.homePerson, due: i.due, evidence: i.verifiedHow }))) };
+      if (a === 'certificates') return { ok: true, msg: JSON.stringify((BOARD_CACHE.certs?.items || []).map(c => ({ home: c.group?.title, type: c.certType || c.name, status: c.renewal, expiry: c.expiry, dutyHolder: c.dutyHolder, evidence: c.verifiedHow }))) };
+      if (a === 'tasks') return { ok: true, msg: JSON.stringify(MY_TASKS) };
+      if (a === 'risks') return { ok: true, msg: JSON.stringify(RISK_REGISTER.filter(r => !r.resolved)) };
+      if (a === 'drafts') return { ok: true, msg: JSON.stringify(DRAFTS.slice(0, 10).map(d => ({ to: d.to, subject: d.subject, status: d.status }))) };
+      return { ok: false, msg: 'Unknown area' };
+    }
+    return { ok: false, msg: 'Unknown tool' };
+  } catch (e) { return { ok: false, msg: 'Tool error: ' + e.message }; }
+}
+
+// ── Agent loop — Anthropic tool use ───────────────────────────
+async function runAgentLoop(userMsg) {
+  const history = CHAT.slice(-16).filter(c => c.role === 'user' || c.role === 'assistant')
+    .map(c => ({ role: c.role, content: c.content }));
+  const apiMessages = [...history];
+  const chips = [];
+  let pendingMail = null;
+
+  for (let hop = 0; hop < 6; hop++) {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json', 'x-api-key': CONN.aiKey,
+        'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 1600,
+        system: buildAssistantSystem(), tools: AI_TOOLS, messages: apiMessages,
+      }),
+    });
+    const d = await res.json();
+    if (d.error) throw new Error(d.error.message || 'AI error');
+
+    const toolUses = (d.content || []).filter(b => b.type === 'tool_use');
+    const textOut = (d.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+
+    if (d.stop_reason === 'tool_use' && toolUses.length) {
+      apiMessages.push({ role: 'assistant', content: d.content });
+      const results = [];
+      for (const tu of toolUses) {
+        const r = await executeAITool(tu.name, tu.input || {});
+        if (r.chip) chips.push(r.chip);
+        if (r.pendingMail) pendingMail = r.pendingMail;
+        results.push({ type: 'tool_result', tool_use_id: tu.id, content: r.msg });
+      }
+      apiMessages.push({ role: 'user', content: results });
+      continue;
+    }
+    // Final answer
+    return { text: textOut || '…', chips, pendingMail };
+  }
+  return { text: 'I hit the action limit for one message — the work so far is done. Ask me to continue.', chips, pendingMail };
+}
+
+async function sendChat(preset) {
+  const input = document.getElementById('chatIn');
+  const msg = (preset || input?.value || '').trim();
+  if (!msg) return;
+  if (!CONN.aiKey) { toast('Connect the AI engine first'); nav('connect'); return; }
+  if (input) input.value = '';
+  CHAT.push({ role: 'user', content: msg, ts: new Date().toISOString() });
+  persistChat(); renderChatMessages(true);
+  try {
+    const out = await runAgentLoop(msg);
+    CHAT.push({ role: 'assistant', content: out.text, ts: new Date().toISOString(), chips: out.chips, pendingMail: out.pendingMail });
+  } catch (e) {
+    CHAT.push({ role: 'assistant', content: '⚠ ' + e.message, ts: new Date().toISOString() });
+  }
+  persistChat(); renderChatMessages(false);
+  updateBadges();
+}
+
+// tiny markdown: **bold**, bullet lines, line breaks — applied AFTER escaping
+function mdLite(s) {
+  let h = esc(s);
+  h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  h = h.split('\n').map(line => {
+    if (/^\s*[-•]\s+/.test(line)) return '<div style="padding-left:14px;text-indent:-10px;">• ' + line.replace(/^\s*[-•]\s+/, '') + '</div>';
+    if (/^#{1,3}\s+/.test(line)) return '<div style="font-family:var(--serif);font-size:15px;margin:8px 0 3px;">' + line.replace(/^#{1,3}\s+/, '') + '</div>';
+    return line ? '<div>' + line + '</div>' : '<div style="height:7px;"></div>';
+  }).join('');
+  return h;
+}
+
+function renderAssistant(m) {
+  m.innerHTML = bc('Command', 'Your <em>Assistant</em>', 'Chief of staff mode — discuss the business, prepare reports, delegate actions') +
+  `<div class="card" style="display:flex;flex-direction:column;height:calc(100vh - 240px);min-height:420px;">
+    <div id="chatScroll" style="flex:1;overflow-y:auto;padding:18px 20px;">
+      ${CHAT.length ? '' : `
+        <div style="text-align:center;padding:40px 20px;">
+          <div style="font-family:var(--serif);font-size:34px;color:var(--gold);margin-bottom:8px;">§</div>
+          <div style="font-family:var(--serif);font-size:17px;margin-bottom:6px;">What shall we work on?</div>
+          <div style="font-size:12px;color:var(--t3);margin-bottom:20px;">I can see your inbox, boards, certificates and risks — and I can act on them.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+            ${["What's on my workload today?", 'What needs my attention most urgently?', 'Prepare a certificate compliance report', 'Add a task: review the Trinity SLA this week'].map(s =>
+              `<button class="btn btn-sec btn-sm" onclick="sendChat('${s.replace(/'/g, "\\'")}')">${s}</button>`).join('')}
+          </div>
+        </div>`}
+    </div>
+    <div style="border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:9px;align-items:flex-end;">
+      <textarea id="chatIn" rows="1" placeholder="Talk to your assistant… (Enter to send, Shift+Enter for a new line)"
+        style="flex:1;padding:10px 14px;border:1.5px solid var(--line2);border-radius:12px;font-family:var(--sans);font-size:13px;outline:none;resize:none;max-height:120px;line-height:1.5;"
+        oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,120)+'px';"
+        onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
+      <button class="btn btn-gold" onclick="sendChat()" style="border-radius:12px;">Send ↑</button>
+    </div>
+  </div>`;
+  renderChatMessages(false);
+}
+
+function renderChatMessages(thinking) {
+  const el = document.getElementById('chatScroll');
+  if (!el) return;
+  if (CHAT.length) {
+    el.innerHTML = CHAT.map((c, idx) => {
+      if (c.role === 'user') {
+        return `<div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
+          <div style="max-width:75%;background:var(--ink);color:#F5F2EA;padding:10px 15px;border-radius:14px 14px 3px 14px;font-size:13px;line-height:1.6;">${esc(c.content)}</div>
+        </div>`;
+      }
+      return `<div style="display:flex;gap:10px;margin-bottom:14px;">
+        <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--gold),#8A6D2B);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:13px;color:var(--ink);flex-shrink:0;">§</div>
+        <div style="max-width:82%;">
+          ${c.chips?.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:7px;">${c.chips.map(ch => `<span class="pill au">${esc(ch)}</span>`).join('')}</div>` : ''}
+          <div style="background:var(--paper);border:1px solid var(--line);padding:11px 15px;border-radius:3px 14px 14px 14px;font-size:13px;line-height:1.7;color:var(--t1);">${mdLite(c.content)}</div>
+          ${c.pendingMail ? mailConfirmCard(c.pendingMail, idx) : ''}
+          <div style="display:flex;gap:8px;margin-top:5px;">
+            <button class="btn btn-ghost btn-sm" style="font-size:10px;" onclick="copyChatMsg(${idx})">Copy</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('') + (thinking ? `
+      <div style="display:flex;gap:10px;margin-bottom:14px;">
+        <div style="width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,var(--gold),#8A6D2B);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:13px;color:var(--ink);">§</div>
+        <div style="background:var(--paper);border:1px solid var(--line);padding:11px 16px;border-radius:3px 14px 14px 14px;font-size:13px;color:var(--t3);"><em>Working…</em></div>
+      </div>` : '');
+  } else if (thinking) {
+    el.innerHTML = `<div style="padding:20px;color:var(--t3);font-size:13px;"><em>Working…</em></div>`;
+  }
+  el.scrollTop = el.scrollHeight;
+}
+
+function mailConfirmCard(mail, idx) {
+  if (mail.sent) return `<div style="margin-top:8px;font-size:11.5px;color:var(--grn);font-weight:600;">✓ Sent to ${esc(mail.to)}</div>`;
+  return `<div style="margin-top:8px;border:1.5px solid var(--gold);border-radius:10px;overflow:hidden;">
+    <div style="background:var(--gold-soft);padding:8px 13px;font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);">✉ Ready to send — one click</div>
+    <div style="padding:11px 13px;font-size:12px;">
+      <div><strong>To:</strong> ${esc(mail.to)}</div>
+      <div><strong>Subject:</strong> ${esc(mail.subject)}</div>
+      <div style="margin-top:7px;color:var(--t2);white-space:pre-wrap;font-size:12px;line-height:1.6;max-height:180px;overflow-y:auto;">${esc(mail.body)}</div>
+    </div>
+    <div style="padding:9px 13px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn btn-ghost btn-sm" onclick="discardChatMail(${idx})">Discard</button>
+      <button class="btn btn-prim btn-sm" onclick="sendChatMail(${idx})">Send now →</button>
+    </div>
+  </div>`;
+}
+
+async function sendChatMail(idx) {
+  const c = CHAT[idx];
+  if (!c?.pendingMail || c.pendingMail.sent) return;
+  const mail = c.pendingMail;
+  try {
+    const raw = btoa(unescape(encodeURIComponent(
+      `To: ${mail.to}\r\nSubject: ${mail.subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${mail.body}`
+    ))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    await gmailApi('messages/send', { method: 'POST', body: JSON.stringify({ raw }) });
+    mail.sent = true; persistChat(); renderChatMessages(false);
+    logActivity('email_sent', { to: mail.to, subject: mail.subject, via: 'assistant' });
+    toast('Sent ✓');
+  } catch (e) { toast('Send failed: ' + e.message); }
+}
+
+function discardChatMail(idx) {
+  if (CHAT[idx]) { delete CHAT[idx].pendingMail; persistChat(); renderChatMessages(false); }
+}
+
+function copyChatMsg(idx) {
+  navigator.clipboard?.writeText(CHAT[idx]?.content || '').then(() => toast('Copied ✓'));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MY BOARD — personal Monday-style kanban
+// ═══════════════════════════════════════════════════════════════
+function renderMyBoard(m) {
+  const openCount = MY_TASKS.filter(t => t.col !== 'done').length;
+  m.innerHTML = bc('Command', 'My <em>Board</em>', `${openCount} open · add tasks here or just tell the Assistant — "add a task…"`) +
+  `<div style="display:flex;gap:13px;align-items:flex-start;">
+    ${KB_COLS.map(col => {
+      const tasks = MY_TASKS.filter(t => t.col === col.id);
+      return `<div style="flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);"
+        ondragover="event.preventDefault();" ondrop="kbDrop(event,'${col.id}')">
+        <div style="padding:11px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;">
+          <span style="font-family:var(--serif);font-size:13.5px;">${col.label}</span>
+          <span class="pill gy">${tasks.length}</span>
+          ${col.id === 'todo' ? `<button class="btn btn-ghost btn-sm" style="margin-left:auto;font-size:14px;padding:2px 8px;" onclick="kbQuickAdd()">+</button>` : ''}
+        </div>
+        <div style="padding:9px;min-height:70px;">
+          ${tasks.map(t => kbCard(t)).join('') || '<div style="font-size:11px;color:var(--t4);text-align:center;padding:14px;font-style:italic;">empty</div>'}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function kbCard(t) {
+  const pc = { critical: 'rd', high: 'am', medium: 'bl', low: 'gy' }[t.priority] || 'gy';
+  const d = t.due ? daysUntil(t.due) : null;
+  return `<div draggable="true" ondragstart="kbDragStart(event,'${t.id}')" onclick="kbOpen('${t.id}')"
+    style="background:${t.col === 'done' ? 'var(--paper)' : 'white'};border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:7px;cursor:pointer;box-shadow:var(--sh);${t.col === 'done' ? 'opacity:0.6;' : ''}">
+    <div style="font-size:12.5px;font-weight:600;line-height:1.4;${t.col === 'done' ? 'text-decoration:line-through;' : ''}">${t.source === 'assistant' ? '<span style="color:var(--gold);">§</span> ' : ''}${esc(t.title)}</div>
+    <div style="display:flex;gap:5px;margin-top:6px;align-items:center;">
+      <span class="pill ${pc}">${t.priority || 'medium'}</span>
+      ${t.due ? `<span style="font-size:10px;color:${d !== null && d < 0 ? 'var(--red)' : 'var(--t3)'};font-weight:600;">${d !== null && d < 0 ? Math.abs(d) + 'd late' : fD(t.due)}</span>` : ''}
+    </div>
+  </div>`;
+}
+
+let _kbDragId = null;
+function kbDragStart(ev, id) { _kbDragId = id; ev.dataTransfer.effectAllowed = 'move'; }
+function kbDrop(ev, col) {
+  ev.preventDefault();
+  const t = MY_TASKS.find(x => x.id === _kbDragId);
+  if (t && t.col !== col) {
+    t.col = col;
+    if (col === 'done') t.completedAt = new Date().toISOString();
+    persistChat(); updateBadges(); render();
+  }
+  _kbDragId = null;
+}
+
+function kbQuickAdd() {
+  openModal('New task', `
+    <input id="kbTitle" type="text" placeholder="What needs doing?" style="width:100%;padding:10px 13px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;outline:none;margin-bottom:10px;">
+    <div style="display:flex;gap:10px;">
+      <div style="flex:1;">
+        <label style="font-size:9.5px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--t3);">Priority</label>
+        <select id="kbPri" style="width:100%;padding:8px 11px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:12.5px;background:white;margin-top:4px;">
+          <option value="medium">Medium</option><option value="critical">Critical</option><option value="high">High</option><option value="low">Low</option>
+        </select>
+      </div>
+      <div style="flex:1;">
+        <label style="font-size:9.5px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--t3);">Due</label>
+        <input id="kbDue" type="date" style="width:100%;padding:8px 11px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:12.5px;margin-top:4px;">
+      </div>
+    </div>
+    <textarea id="kbNotes" placeholder="Notes (optional)" style="width:100%;min-height:70px;padding:10px 13px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:12.5px;outline:none;margin-top:10px;resize:vertical;"></textarea>
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="kbSaveNew()">Add task</button>
+  `);
+}
+
+function kbSaveNew() {
+  const title = document.getElementById('kbTitle')?.value?.trim();
+  if (!title) { toast('Give it a title'); return; }
+  MY_TASKS.unshift({
+    id: 'mt_' + Date.now(), title,
+    notes: document.getElementById('kbNotes')?.value || '',
+    due: document.getElementById('kbDue')?.value || null,
+    priority: document.getElementById('kbPri')?.value || 'medium',
+    col: 'todo', created: new Date().toISOString(), source: 'manual',
+  });
+  persistChat(); updateBadges(); closeModal(); render(); toast('Task added ✓');
+}
+
+function kbOpen(id) {
+  const t = MY_TASKS.find(x => x.id === id);
+  if (!t) return;
+  openModal(esc(t.title), `
+    <div style="display:flex;gap:6px;margin-bottom:12px;">
+      <span class="pill ${{critical:'rd',high:'am',medium:'bl',low:'gy'}[t.priority] || 'gy'}">${t.priority}</span>
+      <span class="pill gy">${KB_COLS.find(c => c.id === t.col)?.label}</span>
+      ${t.due ? `<span class="pill gy">due ${fD(t.due)}</span>` : ''}
+      ${t.source === 'assistant' ? '<span class="pill au">§ added by assistant</span>' : ''}
+    </div>
+    ${t.notes ? `<div style="font-size:12.5px;line-height:1.7;color:var(--t2);background:var(--paper);padding:12px;border-radius:var(--r3);">${esc(t.notes)}</div>` : ''}
+  `, `
+    <button class="btn btn-ghost btn-sm" onclick="kbDelete('${t.id}')">Delete</button>
+    ${t.col !== 'done' ? `<button class="btn btn-prim btn-sm" onclick="kbComplete('${t.id}')">Complete ✓</button>` : `<button class="btn btn-sec btn-sm" onclick="kbReopen('${t.id}')">Reopen</button>`}
+  `);
+}
+
+function kbDelete(id) { MY_TASKS = MY_TASKS.filter(t => t.id !== id); persistChat(); updateBadges(); closeModal(); render(); toast('Deleted'); }
+function kbComplete(id) { const t = MY_TASKS.find(x => x.id === id); if (t) { t.col = 'done'; t.completedAt = new Date().toISOString(); } persistChat(); updateBadges(); closeModal(); render(); toast('Completed ✓'); }
+function kbReopen(id) { const t = MY_TASKS.find(x => x.id === id); if (t) t.col = 'todo'; persistChat(); updateBadges(); closeModal(); render(); }
 
 // ── BOOT ──────────────────────────────────────────────────────
 updateConnDots();
