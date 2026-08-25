@@ -547,7 +547,23 @@ const CONN = {
   set aiKey(v) { localStorage.setItem('lc_ai_key', v); },
   get googleClientId() { return localStorage.getItem('lc_google_client_id') || ''; },
   set googleClientId(v) { localStorage.setItem('lc_google_client_id', v); },
-  gmailToken: null, // session only — access token from GIS
+  // Gmail access token — persisted with expiry so a page reload does NOT log you out
+  get gmailToken() {
+    const t = localStorage.getItem('lc_gmail_token');
+    const exp = parseInt(localStorage.getItem('lc_gmail_token_exp') || '0', 10);
+    return (t && Date.now() < exp) ? t : null;
+  },
+  set gmailToken(v) {
+    if (v) {
+      localStorage.setItem('lc_gmail_token', v);
+      // default 55 min; the sign-in callback overwrites with Google's exact expiry
+      if (!localStorage.getItem('lc_gmail_token_exp') || parseInt(localStorage.getItem('lc_gmail_token_exp'),10) < Date.now())
+        localStorage.setItem('lc_gmail_token_exp', String(Date.now() + 55 * 60 * 1000));
+    } else {
+      localStorage.removeItem('lc_gmail_token');
+      localStorage.removeItem('lc_gmail_token_exp');
+    }
+  },
   gmailEmail: localStorage.getItem('lc_gmail_email') || '',
 };
 
@@ -726,14 +742,67 @@ function gmailRequestToken() {
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',
     callback: (resp) => {
       if (resp.access_token) {
+        localStorage.setItem('lc_gmail_token_exp', String(Date.now() + ((resp.expires_in || 3300) - 300) * 1000));
         CONN.gmailToken = resp.access_token;
+        localStorage.setItem('lc_gmail_granted', '1');
         updateConnDots();
+        scheduleGmailRefresh();
         toast('Gmail connected ✓ — scanning inbox…');
         gmailScan();
       }
     },
   });
   _gisClient.requestAccessToken();
+}
+
+// ── Silent session renewal — sign in once, stay signed in ─────
+let _gmailRefreshTimer = null;
+
+function ensureGis(cb) {
+  if (window.google?.accounts?.oauth2) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.onload = cb;
+  s.onerror = () => {};
+  document.head.appendChild(s);
+}
+
+function scheduleGmailRefresh() {
+  if (_gmailRefreshTimer) clearTimeout(_gmailRefreshTimer);
+  const exp = parseInt(localStorage.getItem('lc_gmail_token_exp') || '0', 10);
+  if (!exp) return;
+  // Renew 4 minutes before expiry (minimum 20s from now)
+  const inMs = Math.max(exp - Date.now() - 4 * 60 * 1000, 20000);
+  _gmailRefreshTimer = setTimeout(() => { silentGmailRefresh(); }, inMs);
+}
+
+function silentGmailRefresh() {
+  return new Promise((resolve) => {
+    if (!CONN.googleClientId || !localStorage.getItem('lc_gmail_granted')) { resolve(false); return; }
+    let settled = false;
+    const done = (ok) => { if (!settled) { settled = true; resolve(ok); } };
+    setTimeout(() => done(false), 9000);
+    ensureGis(() => {
+      try {
+        const client = google.accounts.oauth2.initTokenClient({
+          client_id: CONN.googleClientId,
+          scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',
+          callback: (resp) => {
+            if (resp.access_token) {
+              localStorage.setItem('lc_gmail_token_exp', String(Date.now() + ((resp.expires_in || 3300) - 300) * 1000));
+              CONN.gmailToken = resp.access_token;
+              updateConnDots();
+              scheduleGmailRefresh();
+              done(true);
+            } else done(false);
+          },
+          error_callback: () => done(false),
+        });
+        // prompt:'' = renew silently in the background, no popup, no click
+        client.requestAccessToken({ prompt: '' });
+      } catch (e) { done(false); }
+    });
+  });
 }
 
 async function gmailApi(path, opts) {
@@ -744,6 +813,11 @@ async function gmailApi(path, opts) {
   });
   if (res.status === 401) {
     CONN.gmailToken = null; updateConnDots();
+    // Permanent-setup users: renew silently and retry — no interruption
+    if (CONN.googleClientId && localStorage.getItem('lc_gmail_granted') && !(opts && opts._retried)) {
+      const ok = await silentGmailRefresh();
+      if (ok) return gmailApi(path, Object.assign({}, opts, { _retried: true }));
+    }
     openModal('Gmail session expired', `
       <div style="font-size:13px;line-height:1.8;color:var(--t2);">
         Quick-connect tokens last about an hour. Renewing takes two clicks:
@@ -2368,6 +2442,17 @@ function kbReopen(id) { const t = MY_TASKS.find(x => x.id === id); if (t) t.col 
 updateConnDots();
 updateBadges();
 render();
+// Restore the Gmail session on load — sign in once, stay signed in
+(function bootGmailSession() {
+  if (CONN.gmailToken) {
+    // Valid stored token — carry on, schedule its renewal
+    scheduleGmailRefresh();
+  } else if (CONN.googleClientId && localStorage.getItem('lc_gmail_granted')) {
+    // Token expired while away — renew silently in the background
+    silentGmailRefresh().then(ok => { if (ok) { updateConnDots(); gmailScan(15); } });
+  }
+})();
+
 // Gentle auto-rescan every 5 minutes when connected
 setInterval(() => { if (CONN.gmailToken) gmailScan(15); }, 5 * 60 * 1000);
 </script>
