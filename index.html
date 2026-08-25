@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legal & Compliance Command — Living Horizon</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,300..600&family=Inter:wght@300..800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0D1321;          /* near-black navy */
+  --ink2:#1A2332;
+  --paper:#FBFAF7;        /* warm ivory */
+  --panel:#FFFFFF;
+  --line:#E8E5DE;
+  --line2:#D9D5CC;
+  --gold:#B8933E;         /* legal gold */
+  --gold-soft:#F7F1E3;
+  --a:#2456E6;            /* command blue */
+  --asoft:#EDF2FE;
+  --red:#C6362E;--rsf:#FBEEED;--rbd:#EFC7C4;
+  --amb:#B45309;--asf2:#FCF3E8;--abd:#EFD5B0;
+  --grn:#1B7A44;--gsf:#EBF5EF;--gbd:#BFDECB;
+  --purp:#6D28D9;--psf:#F3EFFB;
+  --teal:#0E7490;--tsf:#E8F4F8;
+  --t1:#0D1321;--t2:#3D4454;--t3:#8A8F9C;--t4:#B8BCC6;
+  --serif:'Fraunces',Georgia,serif;
+  --sans:'Inter',-apple-system,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --r:14px;--r2:11px;--r3:8px;--rpill:100px;
+  --sh:0 1px 2px rgba(13,19,33,0.04),0 4px 16px rgba(13,19,33,0.05);
+  --sh2:0 4px 12px rgba(13,19,33,0.08),0 16px 48px rgba(13,19,33,0.10);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{font-family:var(--sans);background:var(--paper);color:var(--t1);font-size:14px;-webkit-font-smoothing:antialiased;overflow:hidden;}
+
+/* ═══ LAYOUT ═══ */
+.app{display:flex;height:100vh;}
+aside.sb{width:232px;background:var(--ink);display:flex;flex-direction:column;flex-shrink:0;position:relative;}
+aside.sb::after{content:'';position:absolute;top:0;right:0;bottom:0;width:1px;background:linear-gradient(180deg,rgba(184,147,62,0.4),transparent 40%);}
+.sb-brand{padding:22px 20px 16px;display:flex;align-items:center;gap:11px;}
+.sb-mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--gold),#8A6D2B);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;font-size:15px;color:#0D1321;letter-spacing:-0.02em;}
+.sb-title{font-family:var(--serif);font-size:14.5px;color:#F5F2EA;line-height:1.2;font-weight:500;}
+.sb-title small{display:block;font-family:var(--sans);font-size:8.5px;font-weight:700;letter-spacing:0.22em;text-transform:uppercase;color:var(--gold);margin-top:2px;}
+.sb-nav{flex:1;overflow-y:auto;padding:6px 12px 12px;}
+.sb-nav::-webkit-scrollbar{width:3px;}
+.sb-nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);}
+.sb-label{font-size:8.5px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:rgba(245,242,234,0.28);padding:14px 8px 6px;}
+.nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:none;background:transparent;color:rgba(245,242,234,0.62);font-family:var(--sans);font-size:12.5px;font-weight:500;border-radius:8px;cursor:pointer;transition:all 0.13s;text-align:left;margin-bottom:1px;position:relative;}
+.nav-btn:hover{background:rgba(255,255,255,0.05);color:rgba(245,242,234,0.92);}
+.nav-btn.on{background:rgba(184,147,62,0.14);color:#F5F2EA;font-weight:600;}
+.nav-btn.on::before{content:'';position:absolute;left:-12px;top:6px;bottom:6px;width:2.5px;border-radius:2px;background:var(--gold);}
+.nav-btn svg{flex-shrink:0;opacity:0.8;}
+.nav-badge{margin-left:auto;font-size:9px;font-weight:700;min-width:17px;height:17px;padding:0 5px;border-radius:9px;background:var(--red);color:white;display:flex;align-items:center;justify-content:center;}
+.nav-badge.gold{background:var(--gold);color:var(--ink);}
+.sb-user{padding:13px 16px;border-top:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:10px;cursor:pointer;transition:background 0.13s;}
+.sb-user:hover{background:rgba(255,255,255,0.04);}
+.sb-uav{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--gold),#8A6D2B);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ink);}
+.sb-uname{font-size:12px;font-weight:600;color:rgba(245,242,234,0.9);}
+.sb-urole{font-size:9px;color:var(--gold);text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-top:1px;}
+
+main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
+.topbar{height:54px;background:var(--panel);border-bottom:1px solid var(--line);display:flex;align-items:center;padding:0 22px;gap:14px;flex-shrink:0;}
+.tb-search{flex:1;max-width:420px;position:relative;}
+.tb-search input{width:100%;padding:8px 13px 8px 34px;border:1.5px solid var(--line);border-radius:var(--rpill);font-family:var(--sans);font-size:12.5px;outline:none;background:var(--paper);transition:border 0.15s;}
+.tb-search input:focus{border-color:var(--a);}
+.tb-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--t3);}
+.tb-status{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--t3);padding:5px 12px;border-radius:var(--rpill);border:1px solid var(--line);cursor:pointer;transition:all 0.15s;}
+.tb-status:hover{border-color:var(--line2);background:var(--paper);}
+.tb-dot{width:7px;height:7px;border-radius:50%;background:var(--t4);}
+.tb-dot.ok{background:var(--grn);box-shadow:0 0 0 3px var(--gsf);}
+.tb-dot.err{background:var(--red);box-shadow:0 0 0 3px var(--rsf);}
+.tb-dot.wait{background:var(--amb);box-shadow:0 0 0 3px var(--asf2);}
+.mainbody{flex:1;overflow-y:auto;padding:26px 30px 60px;}
+.mainbody::-webkit-scrollbar{width:8px;}
+.mainbody::-webkit-scrollbar-thumb{background:var(--line2);border-radius:4px;}
+
+/* ═══ TYPE & CARDS ═══ */
+.bc{margin-bottom:22px;}
+.bc-crumb{font-size:9.5px;font-weight:700;letter-spacing:0.16em;text-transform:uppercase;color:var(--gold);margin-bottom:6px;}
+.bc-title{font-family:var(--serif);font-size:27px;font-weight:420;color:var(--t1);line-height:1.08;letter-spacing:-0.015em;}
+.bc-title em{font-style:italic;font-weight:340;color:var(--gold);}
+.bc-sub{font-size:12.5px;color:var(--t3);margin-top:6px;}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;}
+.card-h{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;}
+.card-t{font-family:var(--serif);font-size:15.5px;font-weight:500;color:var(--t1);}
+.card-sub{font-size:11px;color:var(--t3);margin-left:auto;}
+.card-body{padding:16px 18px;}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.mb-3{margin-bottom:12px;}.mb-4{margin-bottom:18px;}.mt-4{margin-top:18px;}
+
+.kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 17px;position:relative;overflow:hidden;}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2.5px;background:var(--line);}
+.kpi.rd::after{background:var(--red);}
+.kpi.am::after{background:var(--amb);}
+.kpi.gr::after{background:var(--grn);}
+.kpi.au::after{background:var(--gold);}
+.kpi.bl::after{background:var(--a);}
+.kpi-label{font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);margin-bottom:7px;}
+.kpi-val{font-family:var(--serif);font-size:30px;font-weight:450;color:var(--t1);letter-spacing:-0.03em;line-height:1;}
+.kpi-note{font-size:10.5px;color:var(--t3);margin-top:6px;}
+
+.pill{display:inline-flex;align-items:center;gap:4px;padding:2.5px 9px;border-radius:var(--rpill);font-size:9.5px;font-weight:700;letter-spacing:0.03em;}
+.pill.rd{background:var(--rsf);color:var(--red);}
+.pill.am{background:var(--asf2);color:var(--amb);}
+.pill.gr{background:var(--gsf);color:var(--grn);}
+.pill.au{background:var(--gold-soft);color:var(--gold);}
+.pill.bl{background:var(--asoft);color:var(--a);}
+.pill.gy{background:#F0EFEA;color:var(--t3);}
+.pill.pu{background:var(--psf);color:var(--purp);}
+.pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:var(--r3);font-family:var(--sans);font-size:12.5px;font-weight:600;cursor:pointer;transition:all 0.14s;border:1.5px solid transparent;}
+.btn-prim{background:var(--ink);color:#F5F2EA;}
+.btn-prim:hover{background:#1E293E;}
+.btn-gold{background:var(--gold);color:var(--ink);}
+.btn-gold:hover{background:#A5832F;}
+.btn-sec{background:var(--panel);border-color:var(--line2);color:var(--t1);}
+.btn-sec:hover{border-color:var(--t4);background:var(--paper);}
+.btn-ghost{background:transparent;color:var(--t3);padding:5px 9px;}
+.btn-ghost:hover{color:var(--t1);background:var(--paper);}
+.btn-sm{padding:5px 11px;font-size:11.5px;}
+
+.tbl{width:100%;border-collapse:collapse;}
+.tbl th{padding:9px 14px;text-align:left;font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);border-bottom:1px solid var(--line);background:var(--paper);}
+.tbl td{padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px;vertical-align:middle;}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr.click{cursor:pointer;transition:background 0.12s;}
+.tbl tr.click:hover{background:var(--paper);}
+.mono{font-family:var(--mono);font-size:11px;}
+.empt{padding:36px;text-align:center;color:var(--t3);font-size:13px;font-style:italic;}
+
+/* ═══ EMAIL TRIAGE ═══ */
+.mail-row{display:flex;gap:12px;padding:13px 18px;border-bottom:1px solid var(--line);cursor:pointer;transition:background 0.12s;align-items:flex-start;}
+.mail-row:hover{background:var(--paper);}
+.mail-row.unread{background:linear-gradient(90deg,var(--asoft) 0,transparent 60px);}
+.mail-row.unread .mail-subj{font-weight:700;}
+.mail-cat{width:3.5px;border-radius:2px;align-self:stretch;flex-shrink:0;}
+.mail-main{flex:1;min-width:0;}
+.mail-top{display:flex;align-items:center;gap:8px;margin-bottom:3px;}
+.mail-from{font-size:12.5px;font-weight:600;color:var(--t1);}
+.mail-time{font-size:10.5px;color:var(--t4);margin-left:auto;font-family:var(--mono);}
+.mail-subj{font-size:13px;color:var(--t1);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mail-snip{font-size:11.5px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mail-ai{font-size:11px;color:var(--t2);background:var(--gold-soft);border-left:2.5px solid var(--gold);padding:6px 10px;border-radius:0 6px 6px 0;margin-top:7px;line-height:1.55;}
+.risk-flag{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:800;padding:2px 8px;border-radius:var(--rpill);letter-spacing:0.05em;}
+
+/* ═══ MODAL & TOAST ═══ */
+.modal-bg{position:fixed;inset:0;background:rgba(13,19,33,0.45);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;z-index:100;}
+.modal-bg.show{display:flex;}
+.modal{background:var(--panel);border-radius:var(--r);box-shadow:var(--sh2);width:min(680px,92vw);max-height:86vh;display:flex;flex-direction:column;overflow:hidden;animation:mIn 0.2s cubic-bezier(0.2,0.9,0.3,1.2);}
+@keyframes mIn{from{opacity:0;transform:translateY(14px) scale(0.98);}to{opacity:1;transform:none;}}
+.modal-h{padding:16px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;}
+.modal-t{font-family:var(--serif);font-size:16.5px;font-weight:500;flex:1;}
+.modal-x{width:28px;height:28px;border-radius:50%;border:none;background:var(--paper);color:var(--t3);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.modal-x:hover{background:var(--line);color:var(--t1);}
+.modal-b{padding:18px 20px;overflow-y:auto;flex:1;}
+.modal-f{padding:13px 20px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:8px;background:var(--paper);}
+#toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--ink);color:#F5F2EA;padding:11px 22px;border-radius:var(--rpill);font-size:12.5px;font-weight:500;box-shadow:var(--sh2);transition:transform 0.3s cubic-bezier(0.2,0.9,0.3,1.2);z-index:200;max-width:80vw;}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ═══ PAGE ANIM ═══ */
+.page-anim{animation:pIn 0.24s ease;}
+@keyframes pIn{from{opacity:0;transform:translateY(7px);}to{opacity:1;transform:none;}}
+
+/* ═══ CONNECT CARDS ═══ */
+.conn-card{border:1.5px solid var(--line);border-radius:var(--r);padding:18px;display:flex;gap:14px;align-items:flex-start;transition:border 0.15s;}
+.conn-card.ok{border-color:var(--gbd);background:linear-gradient(135deg,var(--gsf) 0%,var(--panel) 45%);}
+.conn-logo{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}
+
+/* ═══ CERT TIMELINE ═══ */
+.cert-lane{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);}
+.cert-home{width:110px;font-family:var(--serif);font-size:12.5px;flex-shrink:0;}
+.cert-track{flex:1;display:flex;gap:4px;}
+.cert-chip{flex:1;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:8.5px;font-weight:800;letter-spacing:0.04em;cursor:pointer;transition:transform 0.12s;color:white;text-transform:uppercase;}
+.cert-chip:hover{transform:scale(1.05);}
+
+/* ═══ EA BRIEF ═══ */
+.brief-strip{background:linear-gradient(135deg,var(--ink) 0%,#1D2940 100%);border-radius:var(--r);padding:20px 24px;color:#F5F2EA;position:relative;overflow:hidden;}
+.brief-strip::after{content:'§';position:absolute;right:24px;top:-14px;font-family:var(--serif);font-size:110px;color:rgba(184,147,62,0.12);font-style:italic;}
+.brief-label{font-size:9px;font-weight:800;letter-spacing:0.2em;text-transform:uppercase;color:var(--gold);margin-bottom:8px;}
+.brief-text{font-size:13.5px;line-height:1.75;color:rgba(245,242,234,0.88);max-width:820px;}
+
+
+/* ═══ ACCESS GATE ═══ */
+#gate{position:fixed;inset:0;background:var(--ink);z-index:1000;display:flex;align-items:center;justify-content:center;}
+.gate-box{text-align:center;max-width:340px;padding:20px;}
+.gate-mark{width:54px;height:54px;border-radius:14px;background:linear-gradient(135deg,var(--gold),#8A6D2B);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-weight:600;font-size:24px;color:#0D1321;margin:0 auto 18px;}
+.gate-title{font-family:var(--serif);font-size:19px;color:#F5F2EA;margin-bottom:4px;}
+.gate-sub{font-size:11px;color:rgba(245,242,234,0.4);letter-spacing:0.14em;text-transform:uppercase;font-weight:700;margin-bottom:22px;}
+.gate-in{width:100%;padding:12px 16px;border:1.5px solid rgba(255,255,255,0.15);border-radius:10px;background:rgba(255,255,255,0.06);color:#F5F2EA;font-family:var(--sans);font-size:14px;outline:none;text-align:center;letter-spacing:0.08em;transition:border 0.2s;}
+.gate-in:focus{border-color:var(--gold);}
+.gate-in.shake{animation:gShake 0.4s;border-color:var(--red);}
+@keyframes gShake{0%,100%{transform:translateX(0);}25%{transform:translateX(-7px);}75%{transform:translateX(7px);}}
+.gate-hint{font-size:10.5px;color:rgba(245,242,234,0.3);margin-top:14px;}
+
+@media(max-width:900px){.grid-4{grid-template-columns:1fr 1fr;}.grid-3{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-box">
+    <div class="gate-mark">§</div>
+    <div class="gate-title">Legal &amp; Compliance Command</div>
+    <div class="gate-sub">Living Horizon · Private</div>
+    <input type="password" class="gate-in" id="gateIn" placeholder="Access code" autofocus
+      onkeydown="if(event.key==='Enter')gateCheck()">
+    <div class="gate-hint">Authorised access only</div>
+  </div>
+</div>
+<div class="app">
+<aside class="sb">
+  <div class="sb-brand">
+    <div class="sb-mark">§</div>
+    <div class="sb-title">Legal &amp; Compliance<small>Command · Living Horizon</small></div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-label">Command</div>
+    <button class="nav-btn on" data-pg="dash" onclick="nav('dash')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+      Command Deck
+    </button>
+    <button class="nav-btn" data-pg="brief" onclick="nav('brief')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      Morning Brief
+    </button>
+    <div class="sb-label">Inbox Intelligence</div>
+    <button class="nav-btn" data-pg="inbox" onclick="nav('inbox')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Triage Queue
+      <span class="nav-badge" id="badgeInbox" style="display:none;">0</span>
+    </button>
+    <button class="nav-btn" data-pg="drafts" onclick="nav('drafts')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      Drafted Replies
+    </button>
+    <button class="nav-btn" data-pg="risk" onclick="nav('risk')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      Risk Radar
+      <span class="nav-badge" id="badgeRisk" style="display:none;">0</span>
+    </button>
+    <div class="sb-label">Monday.com</div>
+    <button class="nav-btn" data-pg="boards" onclick="nav('boards')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+      Board Command
+    </button>
+    <button class="nav-btn" data-pg="pushqueue" onclick="nav('pushqueue')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+      Sync Queue
+      <span class="nav-badge gold" id="badgeSync" style="display:none;">0</span>
+    </button>
+    <div class="sb-label">Compliance</div>
+    <button class="nav-btn" data-pg="compliance" onclick="nav('compliance')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l7 4v5c0 4.4-3 8.5-7 9.5-4-1-7-5.1-7-9.5V7l7-4z"/></svg>
+      Deep Dive
+    </button>
+    <button class="nav-btn" data-pg="certs" onclick="nav('certs')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 13l1.5 8-5-3-5 3 1.5-8"/></svg>
+      Certificates
+      <span class="nav-badge" id="badgeCerts" style="display:none;">0</span>
+    </button>
+    <button class="nav-btn" data-pg="verify" onclick="nav('verify')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Evidence Ledger
+    </button>
+    <div class="sb-label">People</div>
+    <button class="nav-btn" data-pg="recruit" onclick="nav('recruit')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      Recruitment
+    </button>
+    <button class="nav-btn" data-pg="induct" onclick="nav('induct')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+      Inductions
+    </button>
+    <div class="sb-label">System</div>
+    <button class="nav-btn" data-pg="connect" onclick="nav('connect')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      Connections
+    </button>
+  </nav>
+  <div class="sb-user" onclick="nav('connect')">
+    <div class="sb-uav">NK</div>
+    <div>
+      <div class="sb-uname">Nasir Khamlichi</div>
+      <div class="sb-urole">Head of Legal &amp; Compliance</div>
+    </div>
+  </div>
+</aside>
+
+<main class="mn">
+  <header class="topbar">
+    <div class="tb-search">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+      <input type="text" id="globalSearch" placeholder="Search mail, boards, certificates, people…" onkeydown="if(event.key==='Enter')globalSearch(this.value)">
+    </div>
+    <div style="flex:1;"></div>
+    <div class="tb-status" onclick="nav('connect')" title="Gmail connection">
+      <div class="tb-dot" id="dotGmail"></div><span>Gmail</span>
+    </div>
+    <div class="tb-status" onclick="nav('connect')" title="Monday.com connection">
+      <div class="tb-dot" id="dotMonday"></div><span>monday</span>
+    </div>
+    <div class="tb-status" onclick="nav('connect')" title="AI engine">
+      <div class="tb-dot" id="dotAI"></div><span>AI</span>
+    </div>
+    <button class="btn btn-gold btn-sm" onclick="runFullScan()" title="Scan inbox + sync boards + refresh intelligence">⟳ Full scan</button>
+  </header>
+  <div class="mainbody" id="mainBody"></div>
+</main>
+</div>
+
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-h"><div class="modal-t" id="modalT"></div><button class="modal-x" onclick="closeModal()">✕</button></div>
+    <div class="modal-b" id="modalB"></div>
+    <div class="modal-f" id="modalF"></div>
+  </div>
+</div>
+<div id="toast"></div>
+<script>
+// ── ACCESS GATE ────────────────────────────────────────────────
+// Access code hash (SHA-256). To change the code: run in the browser console:
+//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('YourNewCode')).then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+// then replace the GATE_HASH value below with the printed hash.
+const GATE_HASH = 'e054344776360e7576e9ef7425c076eb0bf6a6c11e8e77f794377797bf19e175';
+
+async function gateCheck() {
+  const v = document.getElementById('gateIn')?.value || '';
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
+  const hex = [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+  if (hex === GATE_HASH) {
+    sessionStorage.setItem('lc_gate', '1');
+    document.getElementById('gate').style.display = 'none';
+  } else {
+    const el = document.getElementById('gateIn');
+    el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
+    el.value = '';
+  }
+}
+if (sessionStorage.getItem('lc_gate') === '1') {
+  document.getElementById('gate').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LEGAL & COMPLIANCE COMMAND — Living Horizon
+// Nasir Khamlichi · Head of Legal & Compliance
+// Single-file executive portal: Gmail intelligence + Monday.com
+// command + compliance deep-dive + certificates + recruitment
+// ═══════════════════════════════════════════════════════════════
+
+// ── CONFIG — real Monday.com board map (from live account) ─────
+const MONDAY_CONFIG = {
+  apiUrl: 'https://api.monday.com/v2',
+  workspaces: {
+    livingHorizon: { id: 7011790, name: 'Living Horizon' },
+    brunel:        { id: 7012357, name: 'Brunel Management' },
+    shared:        { id: 7105195, name: 'Shared' },
+  },
+  boards: {
+    complianceActions: { id: 5100308982, name: 'LH — Compliance Actions', ws: 'livingHorizon',
+      cols: { priority:'color_mm58jhbb', category:'text_mm588yh4', homePerson:'text_mm58arvr', issue:'long_text_mm58w3t4', due:'date_mm58r8q3', owner:'multiple_person_mm58s29n', source:'text_mm58er4g', status:'color_mm5mvry5', verifiedOn:'date_mm5ssjn9', reviewBy:'date_mm5sbr8b', verifiedHow:'color_mm5sx1cf' } },
+    safetyCerts: { id: 5100299116, name: 'Brunel — Safety Certificates', ws: 'brunel',
+      cols: { certType:'color_mm585q8h', renewal:'color_mm587ty', expiry:'date_mm589vtx', lastCheck:'date_mm58dbc2', engineer:'text_mm5848z8', certLink:'link_mm584dsa', tenantCopy:'color_mm58ykkq', owner:'multiple_person_mm58fb76', dutyHolder:'color_mm5am7nf', certFile:'file_mm5ajny7', verifiedOn:'date_mm5sbp0g', reviewBy:'date_mm5s58f', verifiedHow:'color_mm5s6bwg' },
+      groups: { utopia:'group_mm5av4mm', peartree:'group_mm5arb9a', nirvana:'group_mm5abckj', canalside:'group_mm5atd8t', ivy:'group_mm5ak391', harmony:'group_mm5agzcg', eden:'group_mm5atmbq', cornerstone:'group_mm5ax2z8' } },
+    candidates:      { id: 5100120358, name: 'LH — Candidates', ws: 'livingHorizon' },
+    onboarding:      { id: 5100249166, name: 'LH — Staff Onboarding', ws: 'livingHorizon' },
+    staffFilesAudit: { id: 5100120264, name: 'LH — Staff Files Audit', ws: 'livingHorizon' },
+    staffTraining:   { id: 5100804839, name: 'LH — Staff Training', ws: 'livingHorizon' },
+    complaints:      { id: 5100120679, name: 'LH — Complaints & Compliments', ws: 'livingHorizon' },
+    referrals:       { id: 5100117595, name: 'LH — Referrals', ws: 'livingHorizon' },
+    weeklyHS:        { id: 5100265156, name: 'LH — Weekly H&S Checks', ws: 'livingHorizon' },
+    appraisals:      { id: 5100120246, name: 'LH — Appraisals & Supervision', ws: 'livingHorizon' },
+    competency:      { id: 5100120502, name: 'LH — Competency Checks', ws: 'livingHorizon' },
+    serviceUsers:    { id: 5100120676, name: 'LH — Service Users', ws: 'livingHorizon' },
+    homeMobilisation:{ id: 5100249164, name: 'LH — Home Mobilisation', ws: 'livingHorizon' },
+    properties:      { id: 5100119806, name: 'Brunel — Properties & Homes', ws: 'brunel' },
+    tenancies:       { id: 5100119807, name: 'Brunel — Tenancies', ws: 'brunel' },
+    rentCouncilTax:  { id: 5100120020, name: 'Brunel — Rent & Council Tax', ws: 'brunel' },
+    sharedTasks:     { id: 5099590653, name: 'Shared — Tasks', ws: 'shared' },
+    reviewsApprovals:{ id: 5100802007, name: 'Shared — Reviews & Approvals', ws: 'shared' },
+    hbSmiClaims:     { id: 5100727601, name: 'Shared — HB & SMI Claims', ws: 'shared' },
+  },
+  people: {
+    nasir:  { id: 104835641, name: 'Nasir Khamlichi' },
+    waqas:  { id: 104864405, name: 'Waqas Rehman' },
+    sophia: { id: 104864408, name: 'Sophia Kontny' },
+  },
+};
+
+const HOMES = ['Cornerstone','Eden','Utopia','Nirvana','Harmony','Peartree','Canalside','Ivy'];
+const CERT_TYPES = ['Gas Safety (CP12)','EICR (electrical)','Fire Risk Assessment','Legionella','Emergency Lighting','Fire Alarm Testing','PAT Testing'];
+
+// The verification epistemology — mirrors the real Monday.com system
+const VERIFY_LEVELS = {
+  'Opened the document':        { strength: 5, color: 'var(--grn)',  desc: 'Somebody read the actual certificate or file. Strongest evidence.' },
+  'Confirmed by a director':    { strength: 4, color: '#9cd326',     desc: 'Waqas or Sophia confirmed directly.' },
+  'Read from PCS or Workforce': { strength: 3, color: 'var(--teal)', desc: 'Read from the system of record.' },
+  'Told by a third party':      { strength: 2, color: 'var(--amb)',  desc: 'Contractor or agency said so — not yet seen.' },
+  'Copied from another board':  { strength: 1, color: '#ff6d3b',     desc: 'Two copies of a claim is not evidence.' },
+  'NOT VERIFIED — assumption':  { strength: 0, color: 'var(--red)',  desc: 'Nobody checked. Honestly labelled guess.' },
+};
+
+// Email categories with routing rules
+const MAIL_CATS = {
+  cqc:        { label: 'CQC / Regulator',  color: 'var(--red)',  desc: 'CQC, Ofsted, regulatory bodies' },
+  legal:      { label: 'Legal',            color: 'var(--purp)', desc: 'Solicitors, contracts, disputes, claims' },
+  la:         { label: 'LA / Commissioner',color: 'var(--a)',    desc: 'Local authority, commissioners, procurement' },
+  compliance: { label: 'Compliance',       color: 'var(--gold)', desc: 'Certificates, audits, policies, DBS' },
+  hr:         { label: 'HR / People',      color: 'var(--teal)', desc: 'Recruitment, staff issues, training' },
+  safeguard:  { label: 'Safeguarding',     color: 'var(--red)',  desc: 'Safeguarding concerns and referrals' },
+  finance:    { label: 'Finance',          color: 'var(--grn)',  desc: 'Invoices, rent, HB claims, payroll' },
+  ops:        { label: 'Operations',       color: 'var(--amb)',  desc: 'Day-to-day operations and maintenance' },
+  info:       { label: 'FYI',              color: 'var(--t3)',   desc: 'Newsletters, notifications, low priority' },
+};
+
+// ── STATE ──────────────────────────────────────────────────────
+let curPage = 'dash';
+let curState = {};
+let EMAILS = JSON.parse(localStorage.getItem('lc_emails') || '[]');
+let BOARD_CACHE = JSON.parse(localStorage.getItem('lc_board_cache') || '{}');
+let SYNC_QUEUE = JSON.parse(localStorage.getItem('lc_sync_queue') || '[]');
+let RISK_REGISTER = JSON.parse(localStorage.getItem('lc_risks') || '[]');
+let DRAFTS = JSON.parse(localStorage.getItem('lc_drafts') || '[]');
+let ACTIVITY = JSON.parse(localStorage.getItem('lc_activity') || '[]');
+
+function persist() {
+  try {
+    localStorage.setItem('lc_emails', JSON.stringify(EMAILS.slice(0, 400)));
+    localStorage.setItem('lc_board_cache', JSON.stringify(BOARD_CACHE));
+    localStorage.setItem('lc_sync_queue', JSON.stringify(SYNC_QUEUE));
+    localStorage.setItem('lc_risks', JSON.stringify(RISK_REGISTER));
+    localStorage.setItem('lc_drafts', JSON.stringify(DRAFTS));
+    localStorage.setItem('lc_activity', JSON.stringify(ACTIVITY.slice(0, 500)));
+  } catch (e) { console.warn('Storage full', e); }
+}
+
+function logActivity(type, detail) {
+  ACTIVITY.unshift({ ts: new Date().toISOString(), type, detail });
+  persist();
+}
+
+// ── HELPERS ────────────────────────────────────────────────────
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fD = d => d ? new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+const fDT = d => d ? new Date(d).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
+const daysUntil = d => d ? Math.ceil((new Date(d) - new Date()) / 86400000) : null;
+const relTime = ts => {
+  const mins = Math.floor((Date.now() - new Date(ts)) / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return mins + 'm';
+  if (mins < 1440) return Math.floor(mins/60) + 'h';
+  return Math.floor(mins/1440) + 'd';
+};
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._h);
+  t._h = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+function openModal(title, body, footer) {
+  document.getElementById('modalT').innerHTML = title;
+  document.getElementById('modalB').innerHTML = body;
+  document.getElementById('modalF').innerHTML = footer || '<button class="btn btn-sec btn-sm" onclick="closeModal()">Close</button>';
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('show'); }
+
+function bc(crumb, title, sub) {
+  return `<div class="bc"><div class="bc-crumb">${crumb}</div><div class="bc-title">${title}</div>${sub?`<div class="bc-sub">${sub}</div>`:''}</div>`;
+}
+
+function nav(page, params) {
+  curPage = page; curState = params || {};
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('on', b.dataset.pg === page));
+  render();
+  const mb = document.getElementById('mainBody');
+  mb.scrollTop = 0;
+  mb.classList.remove('page-anim'); void mb.offsetWidth; mb.classList.add('page-anim');
+}
+
+function render() {
+  const m = document.getElementById('mainBody');
+  if (curPage === 'dash') renderDash(m);
+  else if (curPage === 'brief') renderBrief(m);
+  else if (curPage === 'inbox') renderInbox(m);
+  else if (curPage === 'drafts') renderDrafts(m);
+  else if (curPage === 'risk') renderRisk(m);
+  else if (curPage === 'boards') renderBoards(m);
+  else if (curPage === 'pushqueue') renderSyncQueue(m);
+  else if (curPage === 'compliance') renderCompliance(m);
+  else if (curPage === 'certs') renderCerts(m);
+  else if (curPage === 'verify') renderVerify(m);
+  else if (curPage === 'recruit') renderRecruit(m);
+  else if (curPage === 'induct') renderInduct(m);
+  else if (curPage === 'connect') renderConnect(m);
+  updateBadges();
+}
+
+function updateBadges() {
+  const unread = EMAILS.filter(e => !e.read && !e.archived).length;
+  const risks = RISK_REGISTER.filter(r => !r.resolved && (r.severity === 'critical' || r.severity === 'high')).length;
+  const certs = (BOARD_CACHE.certs?.items || []).filter(c => {
+    const d = daysUntil(c.expiry);
+    return d !== null && d < 30;
+  }).length;
+  const setB = (id, n) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.textContent = n; el.style.display = n > 0 ? 'flex' : 'none';
+  };
+  setB('badgeInbox', unread);
+  setB('badgeRisk', risks);
+  setB('badgeCerts', certs);
+  setB('badgeSync', SYNC_QUEUE.filter(s => s.status === 'pending').length);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONNECTIONS — Gmail (Google Identity Services) + Monday + AI
+// ═══════════════════════════════════════════════════════════════
+const CONN = {
+  get mondayToken() { return localStorage.getItem('lc_monday_token') || ''; },
+  set mondayToken(v) { localStorage.setItem('lc_monday_token', v); },
+  get aiKey() { return localStorage.getItem('lc_ai_key') || ''; },
+  set aiKey(v) { localStorage.setItem('lc_ai_key', v); },
+  get googleClientId() { return localStorage.getItem('lc_google_client_id') || ''; },
+  set googleClientId(v) { localStorage.setItem('lc_google_client_id', v); },
+  gmailToken: null, // session only — access token from GIS
+  gmailEmail: localStorage.getItem('lc_gmail_email') || '',
+};
+
+function updateConnDots() {
+  const set = (id, state) => {
+    const el = document.getElementById(id);
+    if (el) el.className = 'tb-dot ' + state;
+  };
+  set('dotGmail', CONN.gmailToken ? 'ok' : (CONN.googleClientId ? 'wait' : ''));
+  set('dotMonday', CONN.mondayToken ? 'ok' : '');
+  set('dotAI', CONN.aiKey ? 'ok' : '');
+}
+
+// ── MONDAY.COM API — direct GraphQL from browser ──────────────
+async function mondayQuery(query, variables) {
+  if (!CONN.mondayToken) throw new Error('Monday.com not connected');
+  const res = await fetch(MONDAY_CONFIG.apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': CONN.mondayToken,
+      'API-Version': '2024-10',
+    },
+    body: JSON.stringify({ query, variables: variables || {} }),
+  });
+  const data = await res.json();
+  if (data.errors) throw new Error(data.errors[0]?.message || 'Monday API error');
+  return data.data;
+}
+
+// Fetch a board's items with column values
+async function mondayFetchBoard(boardId, limit = 100) {
+  const q = `query($bid:[ID!],$limit:Int){
+    boards(ids:$bid){ id name items_count
+      groups{ id title }
+      items_page(limit:$limit){ items{ id name group{ id title }
+        column_values{ id text value type ... on StatusValue{ label } ... on DateValue{ date } ... on PeopleValue{ persons_and_teams{ id } } }
+      } }
+    }
+  }`;
+  const d = await mondayQuery(q, { bid: [String(boardId)], limit });
+  return d.boards?.[0] || null;
+}
+
+// Create an item on a board
+async function mondayCreateItem(boardId, itemName, columnValues, groupId) {
+  const q = `mutation($bid:ID!,$name:String!,$cols:JSON,$gid:String){
+    create_item(board_id:$bid,item_name:$name,column_values:$cols${groupId?',group_id:$gid':''}){ id name }
+  }`;
+  const d = await mondayQuery(q, { bid: String(boardId), name: itemName, cols: JSON.stringify(columnValues || {}), gid: groupId });
+  return d.create_item;
+}
+
+// Update an item's columns
+async function mondayUpdateItem(boardId, itemId, columnValues) {
+  const q = `mutation($bid:ID!,$iid:ID!,$cols:JSON!){
+    change_multiple_column_values(board_id:$bid,item_id:$iid,column_values:$cols){ id }
+  }`;
+  const d = await mondayQuery(q, { bid: String(boardId), iid: String(itemId), cols: JSON.stringify(columnValues) });
+  return d.change_multiple_column_values;
+}
+
+// Add an update (comment) to an item
+async function mondayAddUpdate(itemId, body) {
+  const q = `mutation($iid:ID!,$body:String!){ create_update(item_id:$iid,body:$body){ id } }`;
+  return mondayQuery(q, { iid: String(itemId), body });
+}
+
+// ── GMAIL — Google Identity Services token flow ───────────────
+let _gisClient = null;
+
+function gmailConnect(mode) {
+  // Two modes: 'quick' (no setup — OAuth Playground token) and 'full' (own Client ID)
+  mode = mode || 'quick';
+  const quickTab = mode === 'quick';
+  openModal('Connect Gmail', `
+    <div style="display:flex;gap:6px;margin-bottom:16px;">
+      <button class="btn btn-sm ${quickTab?'btn-prim':'btn-sec'}" onclick="gmailConnect('quick')">⚡ Quick connect — no setup</button>
+      <button class="btn btn-sm ${!quickTab?'btn-prim':'btn-sec'}" onclick="gmailConnect('full')">Permanent setup</button>
+    </div>
+    ${quickTab ? `
+      <div style="font-size:13px;line-height:1.85;color:var(--t2);">
+        <div style="background:var(--gsf);border-left:3px solid var(--grn);padding:10px 13px;border-radius:0 8px 8px 0;margin-bottom:14px;font-size:12.5px;">
+          No Google Cloud account, no Client ID, no configuration. Works instantly, even opening this file straight from your computer. The connection lasts about an hour — one click to renew.
+        </div>
+        <ol style="margin-left:20px;">
+          <li style="margin-bottom:8px;"><a href="https://developers.google.com/oauthplayground" target="_blank" style="color:var(--a);font-weight:600;">Open Google OAuth Playground →</a> <span style="color:var(--t3);">(official Google tool)</span></li>
+          <li style="margin-bottom:8px;">In the list on the left, scroll to <strong>Gmail API v1</strong> and tick <span class="mono" style="font-size:10.5px;">https://mail.google.com/</span></li>
+          <li style="margin-bottom:8px;">Press the blue <strong>Authorize APIs</strong> button → sign in with your work Gmail → Allow</li>
+          <li style="margin-bottom:8px;">Press <strong>Exchange authorization code for tokens</strong></li>
+          <li>Copy the <strong>Access token</strong> (starts <span class="mono" style="font-size:10.5px;">ya29.</span>) and paste it below</li>
+        </ol>
+      </div>
+      <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin:14px 0 5px;">Access token</label>
+      <input id="gQuickToken" type="password" placeholder="ya29.a0AfB_…" style="width:100%;padding:10px 13px;border:1.5px solid var(--line2);border-radius:var(--r3);font-family:var(--mono);font-size:12px;outline:none;">
+    ` : `
+      <div style="font-size:13px;line-height:1.85;color:var(--t2);">
+        <div style="background:var(--asf2);border-left:3px solid var(--amb);padding:10px 13px;border-radius:0 8px 8px 0;margin-bottom:14px;font-size:12.5px;">
+          One-time setup (~5 min) that gives a permanent sign-in button. Best done once the app is deployed to a real web address. Until then, use Quick connect.
+        </div>
+        <ol style="margin-left:20px;">
+          <li style="margin-bottom:7px;"><a href="https://console.cloud.google.com/projectcreate" target="_blank" style="color:var(--a);font-weight:600;">Create a Google Cloud project →</a></li>
+          <li style="margin-bottom:7px;"><a href="https://console.cloud.google.com/apis/library/gmail.googleapis.com" target="_blank" style="color:var(--a);font-weight:600;">Enable the Gmail API →</a></li>
+          <li style="margin-bottom:7px;"><a href="https://console.cloud.google.com/apis/credentials/consent" target="_blank" style="color:var(--a);font-weight:600;">Consent screen →</a> External · add yourself as a test user</li>
+          <li style="margin-bottom:7px;"><a href="https://console.cloud.google.com/apis/credentials/oauthclient" target="_blank" style="color:var(--a);font-weight:600;">Create OAuth Client ID →</a> Web application · JavaScript origin = <span class="mono" style="font-size:10.5px;">${location.protocol==='file:'?'http://localhost:8080 (serve the file first)':location.origin}</span></li>
+          <li>Paste the Client ID below</li>
+        </ol>
+      </div>
+      <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin:14px 0 5px;">Google OAuth Client ID</label>
+      <input id="gClientId" type="text" placeholder="xxxxx.apps.googleusercontent.com" value="${esc(CONN.googleClientId)}" style="width:100%;padding:10px 13px;border:1.5px solid var(--line2);border-radius:var(--r3);font-family:var(--mono);font-size:12px;outline:none;">
+    `}
+  `, quickTab ? `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="saveQuickToken()">Connect →</button>
+  ` : `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="saveGoogleClientId()">Save &amp; sign in</button>
+  `);
+}
+
+async function saveQuickToken() {
+  const v = document.getElementById('gQuickToken')?.value?.trim();
+  if (!v) { toast('Paste the access token first'); return; }
+  CONN.gmailToken = v;
+  closeModal();
+  toast('Testing Gmail connection…');
+  try {
+    const profile = await gmailApi('profile');
+    if (profile.emailAddress) {
+      CONN.gmailEmail = profile.emailAddress;
+      localStorage.setItem('lc_gmail_email', profile.emailAddress);
+      updateConnDots();
+      toast(`Connected as ${profile.emailAddress} ✓ — scanning inbox…`);
+      gmailScan();
+    } else throw new Error('no profile');
+  } catch (e) {
+    CONN.gmailToken = null;
+    updateConnDots();
+    toast('Token rejected — copy the Access token again (it may have expired)');
+  }
+}
+
+async function renewQuickToken() {
+  const v = document.getElementById('gRenewToken')?.value?.trim();
+  if (!v) { toast('Paste the new token'); return; }
+  CONN.gmailToken = v;
+  closeModal();
+  try {
+    const profile = await gmailApi('profile');
+    updateConnDots();
+    toast(`Reconnected as ${profile.emailAddress} ✓`);
+    gmailScan();
+  } catch (e) { toast('Token rejected — try copying it again'); }
+}
+
+function saveGoogleClientId() {
+  const v = document.getElementById('gClientId')?.value?.trim();
+  if (!v) { toast('Enter a Client ID'); return; }
+  CONN.googleClientId = v;
+  closeModal();
+  gmailRequestToken();
+}
+
+function gmailRequestToken() {
+  if (!window.google?.accounts?.oauth2) {
+    // Load GIS script on demand
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = () => gmailRequestToken();
+    s.onerror = () => toast('Could not load Google sign-in — check connection');
+    document.head.appendChild(s);
+    return;
+  }
+  _gisClient = google.accounts.oauth2.initTokenClient({
+    client_id: CONN.googleClientId,
+    scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',
+    callback: (resp) => {
+      if (resp.access_token) {
+        CONN.gmailToken = resp.access_token;
+        updateConnDots();
+        toast('Gmail connected ✓ — scanning inbox…');
+        gmailScan();
+      }
+    },
+  });
+  _gisClient.requestAccessToken();
+}
+
+async function gmailApi(path, opts) {
+  if (!CONN.gmailToken) throw new Error('Gmail not connected');
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/' + path, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + CONN.gmailToken, 'Content-Type': 'application/json', ...(opts?.headers || {}) },
+  });
+  if (res.status === 401) {
+    CONN.gmailToken = null; updateConnDots();
+    openModal('Gmail session expired', `
+      <div style="font-size:13px;line-height:1.8;color:var(--t2);">
+        Quick-connect tokens last about an hour. Renewing takes two clicks:
+        <ol style="margin:10px 0 0 20px;line-height:2;">
+          <li><a href="https://developers.google.com/oauthplayground" target="_blank" style="color:var(--a);font-weight:600;">Open OAuth Playground →</a> — your scopes are remembered</li>
+          <li>Press <strong>Refresh access token</strong>, copy the new token, paste it here</li>
+        </ol>
+      </div>
+      <input id="gRenewToken" type="password" placeholder="ya29.a0AfB_…" style="width:100%;padding:10px 13px;border:1.5px solid var(--line2);border-radius:var(--r3);font-family:var(--mono);font-size:12px;outline:none;margin-top:12px;">
+    `, `
+      <button class="btn btn-sec btn-sm" onclick="closeModal()">Later</button>
+      <button class="btn btn-prim btn-sm" onclick="renewQuickToken()">Reconnect →</button>
+    `);
+    throw new Error('Gmail session expired');
+  }
+  return res.json();
+}
+
+// Pull recent inbox messages, parse headers + snippet
+async function gmailScan(maxResults = 30) {
+  try {
+    const list = await gmailApi(`messages?maxResults=${maxResults}&labelIds=INBOX`);
+    if (!list.messages) { toast('Inbox empty or unreadable'); return; }
+    const known = new Set(EMAILS.map(e => e.id));
+    const newIds = list.messages.filter(m => !known.has(m.id)).slice(0, 25);
+    let added = 0;
+    for (const m of newIds) {
+      const full = await gmailApi(`messages/${m.id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`);
+      const h = n => full.payload?.headers?.find(x => x.name === n)?.value || '';
+      const email = {
+        id: m.id,
+        threadId: full.threadId,
+        from: h('From'),
+        fromName: (h('From').match(/^([^<]+)</) || [,h('From')])[1].trim().replace(/"/g,''),
+        subject: h('Subject') || '(no subject)',
+        date: h('Date') ? new Date(h('Date')).toISOString() : new Date().toISOString(),
+        snippet: full.snippet || '',
+        read: !(full.labelIds || []).includes('UNREAD'),
+        archived: false,
+        cat: null, risk: null, aiSummary: null, suggestedAction: null,
+      };
+      classifyEmailLocal(email);
+      EMAILS.unshift(email);
+      added++;
+    }
+    EMAILS.sort((a,b) => new Date(b.date) - new Date(a.date));
+    persist(); updateBadges();
+    logActivity('gmail_scan', { added });
+    toast(`Inbox scanned — ${added} new message${added===1?'':'s'} triaged ✓`);
+    if (CONN.aiKey && added > 0) aiTriageBatch();
+    if (curPage === 'inbox' || curPage === 'dash') render();
+  } catch (e) {
+    toast('Gmail scan failed: ' + e.message);
+  }
+}
+
+// Rule-based instant classification (no AI needed)
+function classifyEmailLocal(email) {
+  const t = (email.from + ' ' + email.subject + ' ' + email.snippet).toLowerCase();
+  if (/cqc|care quality|inspector|regulat|notice of|enforcement/.test(t)) email.cat = 'cqc';
+  else if (/safeguard|allegation|abuse|police|s42|section 42/.test(t)) email.cat = 'safeguard';
+  else if (/solicitor|legal|contract|lease|dispute|claim|litigation|tribunal|settlement|barrister/.test(t)) email.cat = 'legal';
+  else if (/council|commissioner|local authority|procurement|tender|framework|brokerage|placement/.test(t)) email.cat = 'la';
+  else if (/certificat|gas safety|eicr|legionella|fire risk|audit|policy|dbs|compliance/.test(t)) email.cat = 'compliance';
+  else if (/candidate|interview|recruit|cv|onboard|induction|training|staff|hr|payroll|sickness|disciplinary|grievance/.test(t)) email.cat = 'hr';
+  else if (/invoice|payment|rent|housing benefit|hb claim|remittance|statement/.test(t)) email.cat = 'finance';
+  else if (/maintenance|repair|boiler|leak|rota|shift/.test(t)) email.cat = 'ops';
+  else email.cat = 'info';
+
+  // Risk scoring
+  if (/urgent|immediate|deadline|final notice|enforcement|breach|overdue|escalat|legal action|without prejudice/.test(t)) {
+    email.risk = email.cat === 'cqc' || email.cat === 'safeguard' || email.cat === 'legal' ? 'critical' : 'high';
+  } else if (email.cat === 'cqc' || email.cat === 'safeguard') {
+    email.risk = 'high';
+  } else if (/reminder|expir|due|review required|action required/.test(t)) {
+    email.risk = 'medium';
+  } else email.risk = 'low';
+}
+
+// AI triage — deep categorisation, summary, suggested action
+async function aiTriageBatch() {
+  const untriaged = EMAILS.filter(e => !e.aiSummary && !e.archived).slice(0, 10);
+  if (!untriaged.length || !CONN.aiKey) return;
+  for (const email of untriaged) {
+    try {
+      const prompt = `You are the executive assistant to the Head of Legal & Compliance at Living Horizon, a CQC-regulated supported living provider (8 homes, sister landlord company Brunel Management). Analyse this email and respond ONLY with JSON, no markdown:
+{"category":"cqc|legal|la|compliance|hr|safeguard|finance|ops|info","risk":"critical|high|medium|low","summary":"one sharp sentence on what this is and why it matters","action":"the single next action Nasir should take, imperative voice","monday_push":true/false,"monday_board":"complianceActions|candidates|onboarding|complaints|sharedTasks|null","draft_needed":true/false}
+
+Email:
+From: ${email.from}
+Subject: ${email.subject}
+Preview: ${email.snippet}`;
+      const out = await aiCall(prompt, null, 300);
+      if (out) {
+        const j = JSON.parse(out.replace(/```json|```/g, '').trim());
+        email.cat = j.category || email.cat;
+        email.risk = j.risk || email.risk;
+        email.aiSummary = j.summary;
+        email.suggestedAction = j.action;
+        email.mondayPush = j.monday_push ? (j.monday_board || 'sharedTasks') : null;
+        email.draftNeeded = !!j.draft_needed;
+        if (j.risk === 'critical' || j.risk === 'high') addRiskFromEmail(email);
+      }
+    } catch (e) { /* per-email AI failure is fine */ }
+  }
+  persist(); updateBadges();
+  if (curPage === 'inbox' || curPage === 'dash') render();
+}
+
+function addRiskFromEmail(email) {
+  if (RISK_REGISTER.find(r => r.emailId === email.id)) return;
+  RISK_REGISTER.unshift({
+    id: 'rk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+    emailId: email.id,
+    ts: new Date().toISOString(),
+    severity: email.risk,
+    source: 'inbox',
+    title: email.subject,
+    detail: email.aiSummary || email.snippet,
+    action: email.suggestedAction || 'Review and respond',
+    resolved: false,
+  });
+  persist();
+}
+
+// ── AI ENGINE ─────────────────────────────────────────────────
+async function aiCall(prompt, system, maxTokens) {
+  if (!CONN.aiKey) return null;
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CONN.aiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: maxTokens || 800,
+        ...(system ? { system } : {}),
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    const d = await res.json();
+    return d.content?.map(b => b.text || '').join('') || null;
+  } catch (e) { return null; }
+}
+
+// ── FULL SCAN — the ⟳ button ──────────────────────────────────
+async function runFullScan() {
+  toast('Full scan started…');
+  const jobs = [];
+  if (CONN.gmailToken) jobs.push(gmailScan());
+  if (CONN.mondayToken) jobs.push(syncAllBoards());
+  await Promise.allSettled(jobs);
+  if (!CONN.gmailToken && !CONN.mondayToken) {
+    toast('Nothing connected yet — set up Gmail and Monday.com in Connections');
+    nav('connect');
+    return;
+  }
+  scanCertRisks();
+  updateBadges();
+  render();
+  toast('Full scan complete ✓');
+}
+
+// Sync the key Monday boards into cache
+async function syncAllBoards() {
+  const targets = [
+    ['certs', MONDAY_CONFIG.boards.safetyCerts.id],
+    ['compliance', MONDAY_CONFIG.boards.complianceActions.id],
+    ['candidates', MONDAY_CONFIG.boards.candidates.id],
+    ['onboarding', MONDAY_CONFIG.boards.onboarding.id],
+    ['complaints', MONDAY_CONFIG.boards.complaints.id],
+  ];
+  for (const [key, id] of targets) {
+    try {
+      const board = await mondayFetchBoard(id, 200);
+      if (!board) continue;
+      BOARD_CACHE[key] = {
+        id: board.id, name: board.name, fetched: new Date().toISOString(),
+        groups: board.groups || [],
+        items: (board.items_page?.items || []).map(it => {
+          const cols = {};
+          (it.column_values || []).forEach(cv => {
+            cols[cv.id] = { text: cv.text, label: cv.label, date: cv.date, value: cv.value, type: cv.type };
+          });
+          return { id: it.id, name: it.name, group: it.group, cols,
+            // Convenience extraction for certs board
+            ...(key === 'certs' ? {
+              certType: cols[MONDAY_CONFIG.boards.safetyCerts.cols.certType]?.label || cols[MONDAY_CONFIG.boards.safetyCerts.cols.certType]?.text,
+              renewal: cols[MONDAY_CONFIG.boards.safetyCerts.cols.renewal]?.label || cols[MONDAY_CONFIG.boards.safetyCerts.cols.renewal]?.text,
+              expiry: cols[MONDAY_CONFIG.boards.safetyCerts.cols.expiry]?.date || cols[MONDAY_CONFIG.boards.safetyCerts.cols.expiry]?.text,
+              verifiedHow: cols[MONDAY_CONFIG.boards.safetyCerts.cols.verifiedHow]?.label || cols[MONDAY_CONFIG.boards.safetyCerts.cols.verifiedHow]?.text,
+              verifiedOn: cols[MONDAY_CONFIG.boards.safetyCerts.cols.verifiedOn]?.date,
+              dutyHolder: cols[MONDAY_CONFIG.boards.safetyCerts.cols.dutyHolder]?.label || cols[MONDAY_CONFIG.boards.safetyCerts.cols.dutyHolder]?.text,
+            } : {}),
+            ...(key === 'compliance' ? {
+              priority: cols[MONDAY_CONFIG.boards.complianceActions.cols.priority]?.label,
+              status: cols[MONDAY_CONFIG.boards.complianceActions.cols.status]?.label,
+              category: cols[MONDAY_CONFIG.boards.complianceActions.cols.category]?.text,
+              homePerson: cols[MONDAY_CONFIG.boards.complianceActions.cols.homePerson]?.text,
+              due: cols[MONDAY_CONFIG.boards.complianceActions.cols.due]?.date,
+              verifiedHow: cols[MONDAY_CONFIG.boards.complianceActions.cols.verifiedHow]?.label,
+              verifiedOn: cols[MONDAY_CONFIG.boards.complianceActions.cols.verifiedOn]?.date,
+            } : {}),
+          };
+        }),
+      };
+    } catch (e) { console.warn('Board sync failed', key, e.message); }
+  }
+  persist();
+  logActivity('monday_sync', { boards: targets.length });
+}
+
+// Detect certificate risks from cached board data
+function scanCertRisks() {
+  const certs = BOARD_CACHE.certs?.items || [];
+  certs.forEach(c => {
+    const d = daysUntil(c.expiry);
+    const isRisk = (c.renewal === 'OVERDUE' || c.renewal === 'MISSING — no record' || (d !== null && d < 14));
+    if (isRisk && !RISK_REGISTER.find(r => r.certId === c.id && !r.resolved)) {
+      RISK_REGISTER.unshift({
+        id: 'rk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
+        certId: c.id,
+        ts: new Date().toISOString(),
+        severity: c.renewal === 'OVERDUE' || (d !== null && d < 0) ? 'critical' : 'high',
+        source: 'certificates',
+        title: `${c.group?.title || ''} — ${c.certType || c.name}`,
+        detail: c.renewal === 'MISSING — no record' ? 'No certificate on record' : `Expires ${fD(c.expiry)}${d !== null ? ` (${d < 0 ? Math.abs(d)+' days overdue' : d+' days'})` : ''}`,
+        action: c.renewal === 'MISSING — no record' ? 'Locate or commission this certificate' : 'Book renewal now',
+        resolved: false,
+      });
+    }
+  });
+  persist();
+}
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Command Deck
+// ═══════════════════════════════════════════════════════════════
+function renderDash(m) {
+  const unread = EMAILS.filter(e => !e.read && !e.archived);
+  const critical = EMAILS.filter(e => (e.risk === 'critical' || e.risk === 'high') && !e.archived);
+  const risks = RISK_REGISTER.filter(r => !r.resolved);
+  const certs = BOARD_CACHE.certs?.items || [];
+  const certsOverdue = certs.filter(c => c.renewal === 'OVERDUE' || (daysUntil(c.expiry) !== null && daysUntil(c.expiry) < 0));
+  const certsDue = certs.filter(c => { const d = daysUntil(c.expiry); return d !== null && d >= 0 && d < 30; });
+  const comp = BOARD_CACHE.compliance?.items || [];
+  const compOpen = comp.filter(i => i.status !== 'Done');
+  const compCritical = compOpen.filter(i => i.priority === 'Critical');
+  const notVerified = [...certs, ...comp].filter(i => !i.verifiedHow || i.verifiedHow === 'NOT VERIFIED — assumption');
+  const pendingSync = SYNC_QUEUE.filter(s => s.status === 'pending');
+  const nothingConnected = !CONN.gmailToken && !CONN.mondayToken && !CONN.aiKey;
+
+  m.innerHTML = bc('Command', `Good ${new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 18 ? 'afternoon' : 'evening'}, <em>Nasir</em>`,
+    new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })) +
+
+  (nothingConnected ? `
+    <div class="card mb-4" style="border-color:var(--gold);background:linear-gradient(135deg,var(--gold-soft),var(--panel) 60%);">
+      <div class="card-body" style="display:flex;gap:16px;align-items:center;">
+        <div style="font-size:30px;">⚡</div>
+        <div style="flex:1;">
+          <div style="font-family:var(--serif);font-size:16px;margin-bottom:4px;">Bring the Command online</div>
+          <div style="font-size:12.5px;color:var(--t2);">Connect Gmail, Monday.com and the AI engine to activate inbox triage, board sync and the morning brief. Takes about five minutes.</div>
+        </div>
+        <button class="btn btn-prim" onclick="nav('connect')">Set up connections →</button>
+      </div>
+    </div>` : '') +
+
+  `<div class="grid-4 mb-4">
+    <div class="kpi ${critical.length ? 'rd' : 'gr'}" style="cursor:pointer;" onclick="nav('inbox')">
+      <div class="kpi-label">Needs attention</div>
+      <div class="kpi-val">${critical.length}</div>
+      <div class="kpi-note">${unread.length} unread in triage</div>
+    </div>
+    <div class="kpi ${certsOverdue.length ? 'rd' : certsDue.length ? 'am' : 'gr'}" style="cursor:pointer;" onclick="nav('certs')">
+      <div class="kpi-label">Certificates</div>
+      <div class="kpi-val">${certsOverdue.length ? certsOverdue.length : certsDue.length}</div>
+      <div class="kpi-note">${certsOverdue.length ? 'overdue / missing' : 'due within 30 days'}</div>
+    </div>
+    <div class="kpi ${compCritical.length ? 'rd' : compOpen.length ? 'am' : 'gr'}" style="cursor:pointer;" onclick="nav('compliance')">
+      <div class="kpi-label">Compliance actions</div>
+      <div class="kpi-val">${compOpen.length}</div>
+      <div class="kpi-note">${compCritical.length} critical priority</div>
+    </div>
+    <div class="kpi ${notVerified.length > 5 ? 'am' : 'au'}" style="cursor:pointer;" onclick="nav('verify')">
+      <div class="kpi-label">Unverified claims</div>
+      <div class="kpi-val">${notVerified.length}</div>
+      <div class="kpi-note">evidence ledger sweep</div>
+    </div>
+  </div>` +
+
+  `<div class="grid-2 mb-4" style="grid-template-columns:1.6fr 1fr;">
+    <div class="card">
+      <div class="card-h"><div class="card-t">Priority triage</div>
+        <div class="card-sub">${CONN.gmailToken ? 'live inbox' : 'connect Gmail to activate'}</div>
+        <button class="btn btn-ghost btn-sm" onclick="nav('inbox')">All mail →</button>
+      </div>
+      ${critical.length ? critical.slice(0, 6).map(e => mailRow(e, true)).join('') :
+        `<div class="empt">${CONN.gmailToken ? 'Nothing critical right now — inbox is calm' : 'Connect Gmail in Connections to begin monitoring'}</div>`}
+    </div>
+    <div>
+      <div class="card mb-3">
+        <div class="card-h"><div class="card-t">Risk radar</div><button class="btn btn-ghost btn-sm" onclick="nav('risk')">→</button></div>
+        ${risks.length ? risks.slice(0, 4).map(r => `
+          <div style="padding:10px 16px;border-bottom:1px solid var(--line);display:flex;gap:9px;align-items:flex-start;">
+            <span class="pill ${r.severity === 'critical' ? 'rd' : r.severity === 'high' ? 'am' : 'gy'}" style="margin-top:1px;">${r.severity}</span>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(r.title)}</div>
+              <div style="font-size:10.5px;color:var(--t3);margin-top:1px;">${esc(r.detail || '').substring(0, 70)}</div>
+            </div>
+          </div>`).join('') : '<div class="empt" style="padding:20px;">No live risks</div>'}
+      </div>
+      <div class="card">
+        <div class="card-h"><div class="card-t">Monday.com pulse</div><button class="btn btn-ghost btn-sm" onclick="nav('boards')">→</button></div>
+        <div class="card-body" style="padding:12px 16px;">
+          ${CONN.mondayToken ? `
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;"><span style="color:var(--t3);">Compliance actions open</span><strong>${compOpen.length}</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;"><span style="color:var(--t3);">Certificates tracked</span><strong>${certs.length}</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;"><span style="color:var(--t3);">Candidates in pipeline</span><strong>${(BOARD_CACHE.candidates?.items || []).length}</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;"><span style="color:var(--t3);">Onboarding in progress</span><strong>${(BOARD_CACHE.onboarding?.items || []).length}</strong></div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;"><span style="color:var(--t3);">Pending pushes</span><strong>${pendingSync.length}</strong></div>
+            <div style="font-size:10px;color:var(--t4);margin-top:6px;">Synced ${BOARD_CACHE.certs?.fetched ? relTime(BOARD_CACHE.certs.fetched) + ' ago' : 'never'}</div>
+          ` : '<div style="font-size:12px;color:var(--t3);text-align:center;padding:10px;">Connect Monday.com to sync your boards</div>'}
+        </div>
+      </div>
+    </div>
+  </div>` +
+
+  `<div class="card">
+    <div class="card-h"><div class="card-t">Certificate horizon — all eight homes</div><button class="btn btn-ghost btn-sm" onclick="nav('certs')">Full planner →</button></div>
+    <div class="card-body">${certLanes(certs)}</div>
+  </div>`;
+}
+
+function mailRow(e, compact) {
+  const cat = MAIL_CATS[e.cat] || MAIL_CATS.info;
+  return `<div class="mail-row ${e.read ? '' : 'unread'}" onclick="openMail('${e.id}')">
+    <div class="mail-cat" style="background:${cat.color};"></div>
+    <div class="mail-main">
+      <div class="mail-top">
+        <span class="mail-from">${esc(e.fromName || e.from)}</span>
+        <span class="pill" style="background:${cat.color}18;color:${cat.color};">${cat.label}</span>
+        ${e.risk === 'critical' ? '<span class="risk-flag" style="background:var(--rsf);color:var(--red);">⚠ CRITICAL</span>' :
+          e.risk === 'high' ? '<span class="risk-flag" style="background:var(--asf2);color:var(--amb);">HIGH</span>' : ''}
+        <span class="mail-time">${relTime(e.date)}</span>
+      </div>
+      <div class="mail-subj">${esc(e.subject)}</div>
+      ${!compact ? `<div class="mail-snip">${esc(e.snippet)}</div>` : ''}
+      ${e.aiSummary ? `<div class="mail-ai"><strong>§</strong> ${esc(e.aiSummary)}${e.suggestedAction ? ` <em style="color:var(--gold);">→ ${esc(e.suggestedAction)}</em>` : ''}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function certLanes(certs) {
+  if (!certs.length) return `<div class="empt">Connect Monday.com and run a full scan to load the certificate register</div>`;
+  const byHome = {};
+  HOMES.forEach(h => byHome[h] = []);
+  certs.forEach(c => {
+    const home = HOMES.find(h => (c.group?.title || '').toLowerCase().includes(h.toLowerCase()));
+    if (home) byHome[home].push(c);
+  });
+  return HOMES.map(home => {
+    const items = byHome[home];
+    if (!items.length) return `<div class="cert-lane"><div class="cert-home">${home}</div><div style="font-size:11px;color:var(--t4);font-style:italic;">no certificates loaded</div></div>`;
+    return `<div class="cert-lane">
+      <div class="cert-home">${home}</div>
+      <div class="cert-track">${items.slice(0, 8).map(c => {
+        const d = daysUntil(c.expiry);
+        const color = c.renewal === 'OVERDUE' || (d !== null && d < 0) ? 'var(--red)' :
+          c.renewal === 'MISSING — no record' ? '#8A8F9C' :
+          d !== null && d < 30 ? 'var(--amb)' :
+          c.renewal === 'Booked' ? 'var(--purp)' : 'var(--grn)';
+        const label = (c.certType || c.name || '').replace('Gas Safety (CP12)','GAS').replace('EICR (electrical)','EICR').replace('Fire Risk Assessment','FRA').replace('Emergency Lighting','EM-L').replace('Fire Alarm Testing','ALARM').replace('PAT Testing','PAT').replace('Legionella','LEG').substring(0, 6);
+        return `<div class="cert-chip" style="background:${color};" title="${esc(c.certType || c.name)} — ${c.renewal || ''} ${c.expiry ? '· expires ' + fD(c.expiry) : ''}" onclick="openCert('${c.id}')">${label}</div>`;
+      }).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Morning Brief (EA mode)
+// ═══════════════════════════════════════════════════════════════
+function renderBrief(m) {
+  const saved = localStorage.getItem('lc_brief_' + new Date().toDateString());
+  m.innerHTML = bc('Executive Assistant', 'Morning <em>Brief</em>', 'Your day, distilled — inbox, boards, certificates and risk in one page') +
+  `<div class="brief-strip mb-4">
+    <div class="brief-label">§ Briefing — ${new Date().toLocaleDateString('en-GB',{weekday:'long', day:'numeric', month:'long'})}</div>
+    <div class="brief-text" id="briefText">${saved ? saved : (CONN.aiKey ? 'Press <strong>Generate</strong> to compile today\'s briefing from your live inbox, Monday.com boards, certificate register and risk radar.' : 'Connect the AI engine in Connections to unlock the daily brief.')}</div>
+    <div style="margin-top:14px;display:flex;gap:8px;">
+      <button class="btn btn-gold btn-sm" onclick="generateBrief()" ${CONN.aiKey ? '' : 'disabled style="opacity:0.4;"'}>✦ Generate briefing</button>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.1);color:#F5F2EA;" onclick="copyBrief()">Copy</button>
+    </div>
+  </div>` + briefAgenda();
+}
+
+function briefAgenda() {
+  const critical = EMAILS.filter(e => (e.risk === 'critical' || e.risk === 'high') && !e.archived && !e.read);
+  const certs = (BOARD_CACHE.certs?.items || []).filter(c => { const d = daysUntil(c.expiry); return c.renewal === 'OVERDUE' || (d !== null && d < 30); });
+  const comp = (BOARD_CACHE.compliance?.items || []).filter(i => i.status !== 'Done' && (i.priority === 'Critical' || i.priority === 'High'));
+  const overdueDue = comp.filter(i => i.due && daysUntil(i.due) < 0);
+  return `<div class="grid-3">
+    <div class="card">
+      <div class="card-h"><div class="card-t">Answer today</div><div class="card-sub">${critical.length}</div></div>
+      ${critical.length ? critical.slice(0,5).map(e => `<div style="padding:9px 16px;border-bottom:1px solid var(--line);font-size:12px;cursor:pointer;" onclick="openMail('${e.id}')"><strong>${esc(e.fromName)}</strong><br><span style="color:var(--t3);">${esc(e.subject).substring(0,60)}</span></div>`).join('') : '<div class="empt" style="padding:18px;">Clear</div>'}
+    </div>
+    <div class="card">
+      <div class="card-h"><div class="card-t">Certificates to chase</div><div class="card-sub">${certs.length}</div></div>
+      ${certs.length ? certs.slice(0,5).map(c => `<div style="padding:9px 16px;border-bottom:1px solid var(--line);font-size:12px;cursor:pointer;" onclick="openCert('${c.id}')"><strong>${esc(c.group?.title || '')}</strong> · ${esc(c.certType || c.name)}<br><span style="color:${c.renewal==='OVERDUE'?'var(--red)':'var(--amb)'};font-weight:600;">${c.renewal || ''} ${c.expiry ? '· ' + fD(c.expiry) : ''}</span></div>`).join('') : '<div class="empt" style="padding:18px;">All green</div>'}
+    </div>
+    <div class="card">
+      <div class="card-h"><div class="card-t">Compliance deadlines</div><div class="card-sub">${comp.length}</div></div>
+      ${comp.length ? comp.slice(0,5).map(i => `<div style="padding:9px 16px;border-bottom:1px solid var(--line);font-size:12px;"><strong>${esc(i.name).substring(0,55)}</strong><br><span style="color:var(--t3);">${esc(i.homePerson || '')} ${i.due ? '· due ' + fD(i.due) : ''} ${daysUntil(i.due) < 0 ? '<span style="color:var(--red);font-weight:700;">OVERDUE</span>' : ''}</span></div>`).join('') : '<div class="empt" style="padding:18px;">None critical</div>'}
+    </div>
+  </div>`;
+}
+
+async function generateBrief() {
+  const el = document.getElementById('briefText');
+  el.innerHTML = '<em>Compiling your briefing…</em>';
+  const critical = EMAILS.filter(e => (e.risk === 'critical' || e.risk === 'high') && !e.archived).slice(0, 8);
+  const certs = (BOARD_CACHE.certs?.items || []).filter(c => { const d = daysUntil(c.expiry); return c.renewal === 'OVERDUE' || c.renewal === 'MISSING — no record' || (d !== null && d < 30); });
+  const comp = (BOARD_CACHE.compliance?.items || []).filter(i => i.status !== 'Done');
+  const risks = RISK_REGISTER.filter(r => !r.resolved).slice(0, 6);
+
+  const prompt = `You are the executive assistant to Nasir Khamlichi, Head of Legal & Compliance at Living Horizon (CQC-regulated supported living, 8 homes, sister landlord Brunel Management). Write his morning briefing as one tight, confident paragraph of 4-7 sentences. Prioritise ruthlessly: what MUST happen today, what is burning, what can wait. Name specific homes, certificates, senders. No bullet points, no headers, no fluff. End with the single most important action of the day.
+
+INBOX (high/critical): ${critical.map(e => `[${e.cat}/${e.risk}] ${e.fromName}: ${e.subject}`).join(' | ') || 'quiet'}
+CERTIFICATES at risk: ${certs.map(c => `${c.group?.title}: ${c.certType} ${c.renewal} exp ${c.expiry || '?'}`).join(' | ') || 'all current'}
+COMPLIANCE open (${comp.length}): critical items: ${comp.filter(i=>i.priority==='Critical').map(i => i.name).join(' | ') || 'none'}
+RISK REGISTER: ${risks.map(r => `[${r.severity}] ${r.title}`).join(' | ') || 'clear'}`;
+
+  const out = await aiCall(prompt, null, 500);
+  if (out) {
+    el.innerHTML = out;
+    localStorage.setItem('lc_brief_' + new Date().toDateString(), out);
+    toast('Briefing generated ✓');
+  } else {
+    el.innerHTML = 'AI unavailable — check the AI key in Connections.';
+  }
+}
+
+function copyBrief() {
+  const t = document.getElementById('briefText')?.textContent || '';
+  navigator.clipboard?.writeText(t).then(() => toast('Copied ✓'));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Triage Queue (inbox)
+// ═══════════════════════════════════════════════════════════════
+function renderInbox(m) {
+  const filter = curState.cat || 'all';
+  const shown = EMAILS.filter(e => !e.archived && (filter === 'all' || e.cat === filter));
+  m.innerHTML = bc('Inbox Intelligence', 'Triage <em>Queue</em>', CONN.gmailToken ? `${EMAILS.filter(e=>!e.read&&!e.archived).length} unread · categorised and risk-scored automatically` : 'Connect Gmail to begin monitoring') +
+  `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+    <button class="btn btn-sm ${filter==='all'?'btn-prim':'btn-sec'}" onclick="nav('inbox')">All (${EMAILS.filter(e=>!e.archived).length})</button>
+    ${Object.entries(MAIL_CATS).map(([k, c]) => {
+      const n = EMAILS.filter(e => e.cat === k && !e.archived).length;
+      return n ? `<button class="btn btn-sm ${filter===k?'btn-prim':'btn-sec'}" onclick="nav('inbox',{cat:'${k}'})" style="${filter!==k?`border-color:${c.color}40;`:''}">${c.label} (${n})</button>` : '';
+    }).join('')}
+    <div style="flex:1;"></div>
+    ${CONN.gmailToken ? `<button class="btn btn-gold btn-sm" onclick="gmailScan()">⟳ Scan now</button>` : `<button class="btn btn-prim btn-sm" onclick="gmailConnect()">Connect Gmail</button>`}
+    ${CONN.aiKey && EMAILS.some(e=>!e.aiSummary&&!e.archived) ? `<button class="btn btn-sec btn-sm" onclick="aiTriageBatch();toast('AI triage running…')">✦ AI triage</button>` : ''}
+  </div>
+  <div class="card">
+    ${shown.length ? shown.slice(0, 60).map(e => mailRow(e)).join('') : `<div class="empt">${CONN.gmailToken ? 'No messages in this category' : 'Nothing here yet — connect Gmail and press Scan'}</div>`}
+  </div>`;
+}
+
+function openMail(id) {
+  const e = EMAILS.find(x => x.id === id);
+  if (!e) return;
+  e.read = true; persist(); updateBadges();
+  const cat = MAIL_CATS[e.cat] || MAIL_CATS.info;
+  openModal(esc(e.subject), `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px;flex-wrap:wrap;">
+      <span class="pill" style="background:${cat.color}18;color:${cat.color};">${cat.label}</span>
+      ${e.risk === 'critical' || e.risk === 'high' ? `<span class="pill ${e.risk==='critical'?'rd':'am'}">${e.risk.toUpperCase()} RISK</span>` : ''}
+      <span style="font-size:11px;color:var(--t3);">${esc(e.from)} · ${fDT(e.date)}</span>
+    </div>
+    ${e.aiSummary ? `<div class="mail-ai" style="margin-bottom:12px;"><strong>§ Assessment:</strong> ${esc(e.aiSummary)}<br>${e.suggestedAction ? `<strong style="color:var(--gold);">→ Next action:</strong> ${esc(e.suggestedAction)}` : ''}</div>` : ''}
+    <div style="font-size:13px;line-height:1.7;color:var(--t2);background:var(--paper);border-radius:var(--r3);padding:14px;">${esc(e.snippet)}…</div>
+    <div style="font-size:10.5px;color:var(--t4);margin-top:10px;">Full message opens in Gmail — this is the triage preview.</div>
+  `, `
+    <button class="btn btn-ghost btn-sm" onclick="archiveMail('${e.id}')">Archive</button>
+    <button class="btn btn-sec btn-sm" onclick="pushMailToMonday('${e.id}')">↑ Push to Monday</button>
+    ${CONN.aiKey ? `<button class="btn btn-sec btn-sm" onclick="draftReply('${e.id}')">✦ Draft reply</button>` : ''}
+    <a class="btn btn-prim btn-sm" style="text-decoration:none;" target="_blank" href="https://mail.google.com/mail/u/0/#inbox/${e.threadId || e.id}">Open in Gmail →</a>
+  `);
+}
+
+function archiveMail(id) {
+  const e = EMAILS.find(x => x.id === id);
+  if (e) { e.archived = true; persist(); closeModal(); render(); toast('Archived'); }
+}
+
+// Push an email into the Monday sync queue (choose board)
+function pushMailToMonday(id) {
+  const e = EMAILS.find(x => x.id === id);
+  if (!e) return;
+  const suggested = e.mondayPush || (e.cat === 'compliance' || e.cat === 'cqc' ? 'complianceActions' : e.cat === 'hr' ? 'sharedTasks' : 'sharedTasks');
+  closeModal();
+  openModal('Push to Monday.com', `
+    <div style="font-size:12.5px;color:var(--t2);margin-bottom:12px;">Create an item from this email. It goes into the sync queue and pushes on your confirmation.</div>
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">Item name</label>
+    <input id="pushName" type="text" value="${esc(e.subject)}" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;outline:none;margin-bottom:12px;">
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">Target board</label>
+    <select id="pushBoard" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;outline:none;background:white;">
+      ${['complianceActions','sharedTasks','candidates','onboarding','complaints','referrals'].map(k =>
+        `<option value="${k}" ${k===suggested?'selected':''}>${MONDAY_CONFIG.boards[k].name}</option>`).join('')}
+    </select>
+    <div style="font-size:11px;color:var(--t3);margin-top:10px;">The email summary and a link back to the thread go into the item's update.</div>
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="confirmPush('${e.id}')">Queue push →</button>
+  `);
+}
+
+function confirmPush(emailId) {
+  const e = EMAILS.find(x => x.id === emailId);
+  const name = document.getElementById('pushName')?.value || e.subject;
+  const boardKey = document.getElementById('pushBoard')?.value || 'sharedTasks';
+  SYNC_QUEUE.unshift({
+    id: 'sq_' + Date.now(),
+    ts: new Date().toISOString(),
+    emailId, itemName: name, boardKey,
+    body: `From: ${e.from}\nCategory: ${MAIL_CATS[e.cat]?.label}\nRisk: ${e.risk}\n\n${e.aiSummary || e.snippet}\n\nGmail: https://mail.google.com/mail/u/0/#inbox/${e.threadId || e.id}`,
+    status: 'pending',
+  });
+  persist(); updateBadges(); closeModal();
+  toast('Queued — review in Sync Queue');
+}
+
+// AI reply drafting
+async function draftReply(emailId) {
+  const e = EMAILS.find(x => x.id === emailId);
+  if (!e) return;
+  closeModal();
+  toast('Drafting reply…');
+  const prompt = `You are drafting an email reply for Nasir Khamlichi, Head of Legal & Compliance at Living Horizon (CQC-regulated supported living provider). Write a complete, professional reply — measured, precise, legally aware. British English. No placeholders except [DATE] or [NAME] where genuinely unknown. Sign off "Kind regards, Nasir Khamlichi, Head of Legal & Compliance, Living Horizon".
+
+Original email:
+From: ${e.from}
+Subject: ${e.subject}
+Content: ${e.snippet}
+${e.aiSummary ? 'Context: ' + e.aiSummary : ''}
+
+Write ONLY the reply body, no subject line.`;
+  const out = await aiCall(prompt, null, 700);
+  if (!out) { toast('AI unavailable'); return; }
+  DRAFTS.unshift({
+    id: 'dr_' + Date.now(),
+    ts: new Date().toISOString(),
+    emailId, to: e.from, subject: 'Re: ' + e.subject,
+    body: out, status: 'draft',
+  });
+  persist();
+  nav('drafts');
+  toast('Draft ready ✓');
+}
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Drafted Replies
+// ═══════════════════════════════════════════════════════════════
+function renderDrafts(m) {
+  m.innerHTML = bc('Inbox Intelligence', 'Drafted <em>Replies</em>', 'AI-drafted responses awaiting your review — nothing sends without you') +
+  (DRAFTS.length ? DRAFTS.map(d => `
+    <div class="card mb-3">
+      <div class="card-h">
+        <div class="card-t" style="font-size:14px;">${esc(d.subject)}</div>
+        <span class="pill ${d.status === 'sent' ? 'gr' : 'au'}">${d.status}</span>
+        <div class="card-sub">${relTime(d.ts)} ago · to ${esc(d.to)}</div>
+      </div>
+      <div class="card-body">
+        <textarea id="draft_${d.id}" style="width:100%;min-height:160px;padding:12px;border:1.5px solid var(--line);border-radius:var(--r3);font-family:var(--sans);font-size:13px;line-height:1.65;outline:none;resize:vertical;">${esc(d.body)}</textarea>
+        <div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end;">
+          <button class="btn btn-ghost btn-sm" onclick="deleteDraft('${d.id}')">Discard</button>
+          <button class="btn btn-sec btn-sm" onclick="copyDraft('${d.id}')">Copy</button>
+          ${d.status !== 'sent' && CONN.gmailToken ? `<button class="btn btn-prim btn-sm" onclick="sendDraft('${d.id}')">Send via Gmail →</button>` : ''}
+        </div>
+      </div>
+    </div>`).join('') : '<div class="card"><div class="empt">No drafts yet — open an email in the Triage Queue and press ✦ Draft reply</div></div>');
+}
+
+function deleteDraft(id) { DRAFTS = DRAFTS.filter(d => d.id !== id); persist(); render(); toast('Discarded'); }
+function copyDraft(id) {
+  const v = document.getElementById('draft_' + id)?.value || '';
+  navigator.clipboard?.writeText(v).then(() => toast('Copied ✓'));
+}
+
+async function sendDraft(id) {
+  const d = DRAFTS.find(x => x.id === id);
+  if (!d) return;
+  const body = document.getElementById('draft_' + id)?.value || d.body;
+  if (!confirm('Send this reply now via Gmail?')) return;
+  try {
+    const toAddr = (d.to.match(/<([^>]+)>/) || [, d.to])[1];
+    const raw = btoa(unescape(encodeURIComponent(
+      `To: ${toAddr}\r\nSubject: ${d.subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${body}`
+    ))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    await gmailApi('messages/send', { method: 'POST', body: JSON.stringify({ raw }) });
+    d.status = 'sent'; d.body = body; persist(); render();
+    logActivity('email_sent', { to: toAddr, subject: d.subject });
+    toast('Sent ✓');
+  } catch (e) { toast('Send failed: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Risk Radar
+// ═══════════════════════════════════════════════════════════════
+function renderRisk(m) {
+  const live = RISK_REGISTER.filter(r => !r.resolved);
+  const resolved = RISK_REGISTER.filter(r => r.resolved).slice(0, 10);
+  const bySev = s => live.filter(r => r.severity === s);
+  m.innerHTML = bc('Inbox Intelligence', 'Risk <em>Radar</em>', 'Live risks surfaced from your inbox, certificates and compliance boards') +
+  `<div class="grid-4 mb-4">
+    <div class="kpi rd"><div class="kpi-label">Critical</div><div class="kpi-val">${bySev('critical').length}</div></div>
+    <div class="kpi am"><div class="kpi-label">High</div><div class="kpi-val">${bySev('high').length}</div></div>
+    <div class="kpi bl"><div class="kpi-label">Medium</div><div class="kpi-val">${bySev('medium').length}</div></div>
+    <div class="kpi gr"><div class="kpi-label">Resolved (30d)</div><div class="kpi-val">${resolved.length}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-h"><div class="card-t">Live register</div>
+      ${CONN.aiKey && live.length ? `<button class="btn btn-sec btn-sm" style="margin-left:auto;" onclick="aiRiskReview()">✦ AI review</button>` : ''}
+    </div>
+    ${live.length ? live.map(r => `
+      <div style="padding:13px 18px;border-bottom:1px solid var(--line);display:flex;gap:11px;align-items:flex-start;">
+        <span class="pill ${r.severity==='critical'?'rd':r.severity==='high'?'am':'bl'}" style="margin-top:1px;">${r.severity}</span>
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">${esc(r.title)}</div>
+          <div style="font-size:11.5px;color:var(--t3);margin-top:2px;">${esc(r.detail || '')}</div>
+          <div style="font-size:11.5px;color:var(--gold);margin-top:4px;font-weight:600;">→ ${esc(r.action || 'Review')}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;">
+          <span style="font-size:10px;color:var(--t4);">${r.source} · ${relTime(r.ts)}</span>
+          <button class="btn btn-ghost btn-sm" onclick="resolveRisk('${r.id}')">Resolve ✓</button>
+        </div>
+      </div>`).join('') : '<div class="empt">Radar clear — no live risks</div>'}
+  </div>
+  ${resolved.length ? `<div class="card mt-4"><div class="card-h"><div class="card-t" style="font-size:13px;color:var(--t3);">Recently resolved</div></div>
+    ${resolved.map(r => `<div style="padding:8px 18px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--t3);display:flex;gap:8px;"><span>✓</span><span style="flex:1;">${esc(r.title)}</span><span>${relTime(r.resolvedAt || r.ts)}</span></div>`).join('')}</div>` : ''}`;
+}
+
+function resolveRisk(id) {
+  const r = RISK_REGISTER.find(x => x.id === id);
+  if (r) { r.resolved = true; r.resolvedAt = new Date().toISOString(); persist(); render(); toast('Resolved ✓'); }
+}
+
+async function aiRiskReview() {
+  toast('AI reviewing the register…');
+  const live = RISK_REGISTER.filter(r => !r.resolved);
+  const prompt = `You are legal counsel to the Head of Legal & Compliance at a CQC-regulated supported living provider. Review this live risk register and give a sharp assessment in 3-5 sentences: which risks compound each other, which one is most underestimated, and the order to tackle them today. Be specific and direct.
+
+${live.map(r => `[${r.severity}] (${r.source}) ${r.title} — ${r.detail} — planned action: ${r.action}`).join('\n')}`;
+  const out = await aiCall(prompt, null, 400);
+  if (out) openModal('§ Risk counsel', `<div style="font-size:13.5px;line-height:1.75;color:var(--t2);">${esc(out)}</div>`);
+  else toast('AI unavailable');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Monday Board Command
+// ═══════════════════════════════════════════════════════════════
+function renderBoards(m) {
+  const groups = {
+    'Living Horizon': ['complianceActions','candidates','onboarding','staffFilesAudit','staffTraining','complaints','referrals','weeklyHS','appraisals','competency','serviceUsers','homeMobilisation'],
+    'Brunel Management': ['safetyCerts','properties','tenancies','rentCouncilTax'],
+    'Shared': ['sharedTasks','reviewsApprovals','hbSmiClaims'],
+  };
+  m.innerHTML = bc('Monday.com', 'Board <em>Command</em>', CONN.mondayToken ? 'Live two-way link to your Monday.com estate' : 'Connect Monday.com in Connections to activate') +
+  (CONN.mondayToken ? `<div style="display:flex;gap:8px;margin-bottom:16px;">
+    <button class="btn btn-gold btn-sm" onclick="syncAllBoards().then(()=>{scanCertRisks();render();toast('Boards synced ✓')})">⟳ Sync key boards</button>
+    <div style="font-size:11px;color:var(--t3);align-self:center;">Last sync: ${BOARD_CACHE.certs?.fetched ? fDT(BOARD_CACHE.certs.fetched) : 'never'}</div>
+  </div>` : '') +
+  Object.entries(groups).map(([ws, keys]) => `
+    <div class="mb-4">
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--gold);margin-bottom:9px;">${ws}</div>
+      <div class="grid-3">
+        ${keys.map(k => {
+          const b = MONDAY_CONFIG.boards[k];
+          const cached = Object.values(BOARD_CACHE).find(c => String(c.id) === String(b.id));
+          return `<div class="card" style="cursor:pointer;" onclick="openBoard('${k}')">
+            <div class="card-body" style="padding:13px 15px;">
+              <div style="font-size:12.5px;font-weight:600;margin-bottom:3px;">${esc(b.name.replace('LH — ','').replace('Brunel — ','').replace('Shared — ',''))}</div>
+              <div style="font-size:10.5px;color:var(--t3);">${cached ? `${cached.items.length} items · synced ${relTime(cached.fetched)}` : 'not synced'}</div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+
+async function openBoard(key) {
+  const b = MONDAY_CONFIG.boards[key];
+  let cached = Object.values(BOARD_CACHE).find(c => String(c.id) === String(b.id));
+  if (!cached && CONN.mondayToken) {
+    toast('Fetching board…');
+    try {
+      const board = await mondayFetchBoard(b.id, 100);
+      cached = { id: board.id, name: board.name, fetched: new Date().toISOString(),
+        items: (board.items_page?.items || []).map(it => ({ id: it.id, name: it.name, group: it.group,
+          cols: Object.fromEntries((it.column_values || []).map(cv => [cv.id, { text: cv.text, label: cv.label, date: cv.date }])) })) };
+      BOARD_CACHE['adhoc_' + key] = cached; persist();
+    } catch (e) { toast('Fetch failed: ' + e.message); return; }
+  }
+  if (!cached) { toast('Connect Monday.com first'); return; }
+  openModal(esc(b.name), `
+    <div style="max-height:52vh;overflow-y:auto;">
+      ${cached.items.length ? `<table class="tbl">${cached.items.slice(0, 50).map(it => `
+        <tr class="click" onclick="window.open('https://livinghorizon.monday.com/boards/${b.id}/pulses/${it.id}','_blank')">
+          <td style="font-weight:600;">${esc(it.name)}</td>
+          <td style="color:var(--t3);font-size:11px;">${esc(it.group?.title || '')}</td>
+        </tr>`).join('')}</table>` : '<div class="empt">Board is empty</div>'}
+    </div>
+    <div style="font-size:10.5px;color:var(--t4);margin-top:8px;">${cached.items.length} items · click a row to open in Monday.com</div>
+  `, `
+    <a class="btn btn-prim btn-sm" style="text-decoration:none;" target="_blank" href="https://livinghorizon.monday.com/boards/${b.id}">Open board in Monday →</a>
+  `);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Sync Queue (email → Monday pushes)
+// ═══════════════════════════════════════════════════════════════
+function renderSyncQueue(m) {
+  const pending = SYNC_QUEUE.filter(s => s.status === 'pending');
+  const done = SYNC_QUEUE.filter(s => s.status !== 'pending').slice(0, 15);
+  m.innerHTML = bc('Monday.com', 'Sync <em>Queue</em>', 'Items queued from your inbox — nothing pushes to Monday without your confirmation') +
+  `<div class="card mb-4">
+    <div class="card-h"><div class="card-t">Awaiting push</div><div class="card-sub">${pending.length}</div>
+      ${pending.length && CONN.mondayToken ? `<button class="btn btn-gold btn-sm" onclick="pushAllPending()">↑ Push all ${pending.length}</button>` : ''}
+    </div>
+    ${pending.length ? pending.map(s => `
+      <div style="padding:13px 18px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;">
+        <div style="flex:1;">
+          <div style="font-size:13px;font-weight:600;">${esc(s.itemName)}</div>
+          <div style="font-size:11px;color:var(--t3);margin-top:2px;">→ ${esc(MONDAY_CONFIG.boards[s.boardKey]?.name || s.boardKey)} · queued ${relTime(s.ts)}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="removeSyncItem('${s.id}')">Remove</button>
+        ${CONN.mondayToken ? `<button class="btn btn-prim btn-sm" onclick="pushSyncItem('${s.id}')">Push →</button>` : ''}
+      </div>`).join('') : '<div class="empt">Queue clear</div>'}
+  </div>
+  ${done.length ? `<div class="card"><div class="card-h"><div class="card-t" style="font-size:13px;color:var(--t3);">History</div></div>
+    ${done.map(s => `<div style="padding:8px 18px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--t3);display:flex;gap:8px;">
+      <span>${s.status === 'pushed' ? '✓' : '✕'}</span><span style="flex:1;">${esc(s.itemName)}</span>
+      ${s.mondayItemId ? `<a href="https://livinghorizon.monday.com/boards/${MONDAY_CONFIG.boards[s.boardKey]?.id}/pulses/${s.mondayItemId}" target="_blank" style="color:var(--a);">open</a>` : ''}
+      <span>${relTime(s.ts)}</span></div>`).join('')}</div>` : ''}`;
+}
+
+function removeSyncItem(id) { SYNC_QUEUE = SYNC_QUEUE.filter(s => s.id !== id); persist(); render(); updateBadges(); }
+
+async function pushSyncItem(id) {
+  const s = SYNC_QUEUE.find(x => x.id === id);
+  if (!s) return;
+  try {
+    const board = MONDAY_CONFIG.boards[s.boardKey];
+    const item = await mondayCreateItem(board.id, s.itemName, {});
+    if (s.body) await mondayAddUpdate(item.id, s.body);
+    s.status = 'pushed'; s.mondayItemId = item.id;
+    persist(); render(); updateBadges();
+    logActivity('monday_push', { board: board.name, item: s.itemName });
+    toast('Pushed to ' + board.name + ' ✓');
+  } catch (e) { toast('Push failed: ' + e.message); }
+}
+
+async function pushAllPending() {
+  const pending = SYNC_QUEUE.filter(s => s.status === 'pending');
+  for (const s of pending) await pushSyncItem(s.id);
+}
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Compliance Deep Dive
+// ═══════════════════════════════════════════════════════════════
+function renderCompliance(m) {
+  const items = BOARD_CACHE.compliance?.items || [];
+  const open = items.filter(i => i.status !== 'Done');
+  const byPri = p => open.filter(i => i.priority === p);
+  const overdue = open.filter(i => i.due && daysUntil(i.due) < 0);
+  const filter = curState.pri || 'all';
+  const shown = filter === 'all' ? open : open.filter(i => i.priority === filter);
+
+  m.innerHTML = bc('Compliance', 'Deep <em>Dive</em>', `Live from LH — Compliance Actions · ${items.length} items · ${open.length} open`) +
+  `<div class="grid-4 mb-4">
+    <div class="kpi ${byPri('Critical').length ? 'rd' : 'gr'}" style="cursor:pointer;" onclick="nav('compliance',{pri:'Critical'})"><div class="kpi-label">Critical</div><div class="kpi-val">${byPri('Critical').length}</div></div>
+    <div class="kpi ${byPri('High').length ? 'am' : 'gr'}" style="cursor:pointer;" onclick="nav('compliance',{pri:'High'})"><div class="kpi-label">High</div><div class="kpi-val">${byPri('High').length}</div></div>
+    <div class="kpi ${overdue.length ? 'rd' : 'gr'}"><div class="kpi-label">Past due</div><div class="kpi-val">${overdue.length}</div></div>
+    <div class="kpi bl"><div class="kpi-label">Total open</div><div class="kpi-val">${open.length}</div></div>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:14px;">
+    <button class="btn btn-sm ${filter==='all'?'btn-prim':'btn-sec'}" onclick="nav('compliance')">All</button>
+    ${['Critical','High','Medium','Low'].map(p => `<button class="btn btn-sm ${filter===p?'btn-prim':'btn-sec'}" onclick="nav('compliance',{pri:'${p}'})">${p} (${byPri(p).length})</button>`).join('')}
+    <div style="flex:1;"></div>
+    ${CONN.aiKey && open.length ? `<button class="btn btn-sec btn-sm" onclick="aiComplianceCounsel()">✦ AI counsel</button>` : ''}
+    ${CONN.mondayToken ? `<button class="btn btn-gold btn-sm" onclick="syncAllBoards().then(()=>{render();toast('Synced ✓')})">⟳ Sync</button>` : ''}
+  </div>
+  <div class="card">
+    ${shown.length ? `<table class="tbl">
+      <tr><th>Action</th><th>Home / Person</th><th>Priority</th><th>Status</th><th>Due</th><th>Evidence</th></tr>
+      ${shown.sort((a,b) => ({'Critical':0,'High':1,'Medium':2,'Low':3}[a.priority] ?? 4) - ({'Critical':0,'High':1,'Medium':2,'Low':3}[b.priority] ?? 4)).map(i => {
+        const d = daysUntil(i.due);
+        const v = VERIFY_LEVELS[i.verifiedHow];
+        return `<tr class="click" onclick="openComplianceItem('${i.id}')">
+          <td style="font-weight:600;max-width:340px;">${esc(i.name)}</td>
+          <td style="font-size:11.5px;color:var(--t3);">${esc(i.homePerson || '—')}</td>
+          <td><span class="pill ${i.priority==='Critical'?'rd':i.priority==='High'?'pu':i.priority==='Medium'?'gr':'gy'}">${i.priority || '—'}</span></td>
+          <td><span class="pill ${i.status==='Done'?'gr':i.status==='Stuck'?'rd':i.status==='Working on it'?'am':'bl'}">${i.status || 'Not started'}</span></td>
+          <td style="font-size:11.5px;${d !== null && d < 0 ? 'color:var(--red);font-weight:700;' : ''}">${i.due ? fD(i.due) + (d !== null && d < 0 ? ` (${Math.abs(d)}d late)` : '') : '—'}</td>
+          <td>${v ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${v.color};" title="${esc(i.verifiedHow)}"></span>` : '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);" title="Unverified"></span>'}</td>
+        </tr>`;
+      }).join('')}</table>` :
+      `<div class="empt">${CONN.mondayToken ? (items.length ? 'Nothing in this filter' : 'Press ⟳ Sync to load the board') : 'Connect Monday.com to load compliance actions'}</div>`}
+  </div>`;
+}
+
+function openComplianceItem(id) {
+  const i = (BOARD_CACHE.compliance?.items || []).find(x => x.id === id);
+  if (!i) return;
+  const issue = i.cols?.[MONDAY_CONFIG.boards.complianceActions.cols.issue]?.text || '';
+  const v = VERIFY_LEVELS[i.verifiedHow];
+  openModal(esc(i.name), `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <span class="pill ${i.priority==='Critical'?'rd':i.priority==='High'?'pu':'gy'}">${i.priority || '—'}</span>
+      <span class="pill ${i.status==='Done'?'gr':'bl'}">${i.status || 'Not started'}</span>
+      ${i.due ? `<span class="pill gy">Due ${fD(i.due)}</span>` : ''}
+      ${i.homePerson ? `<span class="pill au">${esc(i.homePerson)}</span>` : ''}
+    </div>
+    ${issue ? `<div style="font-size:13px;line-height:1.7;color:var(--t2);background:var(--paper);padding:13px;border-radius:var(--r3);margin-bottom:12px;">${esc(issue)}</div>` : ''}
+    <div style="border:1.5px solid ${v ? v.color : 'var(--red)'}40;border-radius:var(--r3);padding:11px 13px;background:${v ? v.color : 'var(--red)'}0A;">
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:${v ? v.color : 'var(--red)'};margin-bottom:3px;">Evidence status</div>
+      <div style="font-size:12px;font-weight:600;">${esc(i.verifiedHow || 'NOT VERIFIED — no evidence recorded')}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px;">${v ? v.desc : 'Nobody has checked this against a source.'} ${i.verifiedOn ? `Last verified ${fD(i.verifiedOn)}.` : ''}</div>
+    </div>
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="markStatus('${i.id}','Working on it')">Working on it</button>
+    <button class="btn btn-sec btn-sm" onclick="markStatus('${i.id}','Done')">Mark done ✓</button>
+    <a class="btn btn-prim btn-sm" style="text-decoration:none;" target="_blank" href="https://livinghorizon.monday.com/boards/${MONDAY_CONFIG.boards.complianceActions.id}/pulses/${i.id}">Open in Monday →</a>
+  `);
+}
+
+async function markStatus(itemId, label) {
+  if (!CONN.mondayToken) { toast('Connect Monday.com first'); return; }
+  try {
+    await mondayUpdateItem(MONDAY_CONFIG.boards.complianceActions.id, itemId, {
+      [MONDAY_CONFIG.boards.complianceActions.cols.status]: { label }
+    });
+    const i = (BOARD_CACHE.compliance?.items || []).find(x => x.id === itemId);
+    if (i) i.status = label;
+    persist(); closeModal(); render();
+    logActivity('monday_update', { item: itemId, status: label });
+    toast(`Updated in Monday → ${label} ✓`);
+  } catch (e) { toast('Update failed: ' + e.message); }
+}
+
+async function aiComplianceCounsel() {
+  toast('Counsel reviewing…');
+  const open = (BOARD_CACHE.compliance?.items || []).filter(i => i.status !== 'Done');
+  const prompt = `You are senior counsel to the Head of Legal & Compliance at a CQC-regulated supported living provider (8 homes). Review the open compliance actions and give your counsel in 4-6 sentences: the single greatest regulatory exposure, which items CQC would seize on at inspection, anything that suggests a systemic gap rather than a one-off, and the recommended order of attack this week. Direct, specific, no hedging.
+
+${open.map(i => `[${i.priority || '?'}/${i.status || 'Not started'}] ${i.name} (${i.homePerson || '?'}) due ${i.due || '?'} — evidence: ${i.verifiedHow || 'UNVERIFIED'}`).join('\n')}`;
+  const out = await aiCall(prompt, null, 500);
+  if (out) openModal('§ Compliance counsel', `<div style="font-size:13.5px;line-height:1.75;color:var(--t2);">${esc(out)}</div>`);
+  else toast('AI unavailable');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Certificates (house planner)
+// ═══════════════════════════════════════════════════════════════
+function renderCerts(m) {
+  const certs = BOARD_CACHE.certs?.items || [];
+  const overdue = certs.filter(c => c.renewal === 'OVERDUE' || (daysUntil(c.expiry) !== null && daysUntil(c.expiry) < 0));
+  const missing = certs.filter(c => c.renewal === 'MISSING — no record');
+  const due30 = certs.filter(c => { const d = daysUntil(c.expiry); return d !== null && d >= 0 && d < 30; });
+  const due90 = certs.filter(c => { const d = daysUntil(c.expiry); return d !== null && d >= 30 && d < 90; });
+
+  m.innerHTML = bc('Compliance', 'Certificate <em>Planner</em>', `Brunel — Safety Certificates · ${certs.length} certificates across ${HOMES.length} homes`) +
+  `<div class="grid-4 mb-4">
+    <div class="kpi ${overdue.length ? 'rd' : 'gr'}"><div class="kpi-label">Overdue</div><div class="kpi-val">${overdue.length}</div></div>
+    <div class="kpi ${missing.length ? 'rd' : 'gr'}"><div class="kpi-label">Missing</div><div class="kpi-val">${missing.length}</div><div class="kpi-note">no record held</div></div>
+    <div class="kpi ${due30.length ? 'am' : 'gr'}"><div class="kpi-label">Due &lt; 30 days</div><div class="kpi-val">${due30.length}</div></div>
+    <div class="kpi bl"><div class="kpi-label">Due 30–90 days</div><div class="kpi-val">${due90.length}</div></div>
+  </div>
+  <div class="card mb-4">
+    <div class="card-h"><div class="card-t">Renewal horizon by home</div>
+      ${CONN.mondayToken ? `<button class="btn btn-gold btn-sm" style="margin-left:auto;" onclick="syncAllBoards().then(()=>{scanCertRisks();render();toast('Synced ✓')})">⟳ Sync</button>` : ''}
+    </div>
+    <div class="card-body">${certLanes(certs)}
+      <div style="display:flex;gap:14px;margin-top:12px;font-size:10px;color:var(--t3);">
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--grn);margin-right:4px;"></span>Valid</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--amb);margin-right:4px;"></span>Due &lt;30d</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--purp);margin-right:4px;"></span>Booked</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:var(--red);margin-right:4px;"></span>Overdue</span>
+        <span><span style="display:inline-block;width:9px;height:9px;border-radius:3px;background:#8A8F9C;margin-right:4px;"></span>Missing</span>
+      </div>
+    </div>
+  </div>
+  ${(overdue.length + missing.length + due30.length) ? `<div class="card">
+    <div class="card-h"><div class="card-t">Action list</div></div>
+    <table class="tbl">
+      <tr><th>Home</th><th>Certificate</th><th>Status</th><th>Expiry</th><th>Duty holder</th><th>Evidence</th></tr>
+      ${[...overdue, ...missing, ...due30].map(c => {
+        const v = VERIFY_LEVELS[c.verifiedHow];
+        const d = daysUntil(c.expiry);
+        return `<tr class="click" onclick="openCert('${c.id}')">
+          <td style="font-weight:600;">${esc(c.group?.title || '')}</td>
+          <td>${esc(c.certType || c.name)}</td>
+          <td><span class="pill ${c.renewal==='OVERDUE'?'rd':c.renewal==='MISSING — no record'?'gy':c.renewal==='Booked'?'pu':'am'}">${c.renewal || '?'}</span></td>
+          <td style="font-size:11.5px;${d !== null && d < 0 ? 'color:var(--red);font-weight:700;' : ''}">${c.expiry ? fD(c.expiry) : '—'}</td>
+          <td style="font-size:11px;color:var(--t3);">${esc(c.dutyHolder || '?')}</td>
+          <td>${v ? `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${v.color};" title="${esc(c.verifiedHow)}"></span>` : '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--red);"></span>'}</td>
+        </tr>`;
+      }).join('')}</table>
+  </div>` : ''}`;
+}
+
+function openCert(id) {
+  const c = (BOARD_CACHE.certs?.items || []).find(x => x.id === id);
+  if (!c) return;
+  const v = VERIFY_LEVELS[c.verifiedHow];
+  const d = daysUntil(c.expiry);
+  openModal(`${esc(c.group?.title || '')} — ${esc(c.certType || c.name)}`, `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+      <span class="pill ${c.renewal==='Valid'?'gr':c.renewal==='OVERDUE'?'rd':c.renewal==='Booked'?'pu':'am'}">${c.renewal || '?'}</span>
+      ${c.expiry ? `<span class="pill gy">Expires ${fD(c.expiry)}${d !== null ? ` · ${d < 0 ? Math.abs(d) + 'd overdue' : d + 'd left'}` : ''}</span>` : ''}
+      ${c.dutyHolder ? `<span class="pill au">${esc(c.dutyHolder)}</span>` : ''}
+    </div>
+    <div style="border:1.5px solid ${v ? v.color : 'var(--red)'}40;border-radius:var(--r3);padding:11px 13px;background:${v ? v.color : 'var(--red)'}0A;">
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:${v ? v.color : 'var(--red)'};margin-bottom:3px;">Evidence status</div>
+      <div style="font-size:12px;font-weight:600;">${esc(c.verifiedHow || 'NOT VERIFIED')}</div>
+      <div style="font-size:11px;color:var(--t3);margin-top:2px;">${v ? v.desc : ''} ${c.verifiedOn ? `Last verified ${fD(c.verifiedOn)}.` : 'Never verified against the actual document.'}</div>
+    </div>
+    ${c.dutyHolder && c.dutyHolder.includes('Trinity') ? '<div style="font-size:11.5px;color:var(--amb);margin-top:10px;background:var(--asf2);padding:9px 12px;border-radius:var(--r3);">Trinity HA is duty holder — LH still shares responsibility under the SLA. We must hold a copy either way.</div>' : ''}
+  `, `
+    ${CONN.mondayToken ? `<button class="btn btn-sec btn-sm" onclick="markCertBooked('${c.id}')">Mark booked</button>` : ''}
+    <a class="btn btn-prim btn-sm" style="text-decoration:none;" target="_blank" href="https://livinghorizon.monday.com/boards/${MONDAY_CONFIG.boards.safetyCerts.id}/pulses/${c.id}">Open in Monday →</a>
+  `);
+}
+
+async function markCertBooked(id) {
+  try {
+    await mondayUpdateItem(MONDAY_CONFIG.boards.safetyCerts.id, id, {
+      [MONDAY_CONFIG.boards.safetyCerts.cols.renewal]: { label: 'Booked' }
+    });
+    const c = (BOARD_CACHE.certs?.items || []).find(x => x.id === id);
+    if (c) c.renewal = 'Booked';
+    persist(); closeModal(); render();
+    toast('Marked as Booked in Monday ✓');
+  } catch (e) { toast('Update failed: ' + e.message); }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Evidence Ledger (verification sweep)
+// ═══════════════════════════════════════════════════════════════
+function renderVerify(m) {
+  const all = [
+    ...(BOARD_CACHE.certs?.items || []).map(i => ({ ...i, board: 'Safety Certificates', boardKey: 'safetyCerts' })),
+    ...(BOARD_CACHE.compliance?.items || []).map(i => ({ ...i, board: 'Compliance Actions', boardKey: 'complianceActions' })),
+  ];
+  const counts = {};
+  Object.keys(VERIFY_LEVELS).forEach(k => counts[k] = all.filter(i => i.verifiedHow === k).length);
+  const unverified = all.filter(i => !i.verifiedHow || i.verifiedHow === 'NOT VERIFIED — assumption');
+  const stale = all.filter(i => {
+    const rb = i.cols?.[MONDAY_CONFIG.boards.safetyCerts.cols.reviewBy]?.date || i.cols?.[MONDAY_CONFIG.boards.complianceActions.cols.reviewBy]?.date;
+    return rb && daysUntil(rb) < 0;
+  });
+
+  m.innerHTML = bc('Compliance', 'Evidence <em>Ledger</em>', 'Every claim has a shelf life — the weekly stale-claim sweep, on demand') +
+  `<div class="brief-strip mb-4" style="padding:16px 22px;">
+    <div class="brief-label">The verification doctrine</div>
+    <div class="brief-text" style="font-size:12.5px;">A search that came back empty is never verification — it can only confirm something <em>is</em> there, never that it is not. Incidents and care notes live on PCS; HR is moving to Workforce. Neither is visible from Monday. Never instruct a solicitor on a row marked NOT VERIFIED.</div>
+  </div>
+  <div class="grid-3 mb-4">
+    ${Object.entries(VERIFY_LEVELS).map(([label, v]) => `
+      <div class="card" style="border-left:3px solid ${v.color};">
+        <div class="card-body" style="padding:11px 14px;display:flex;align-items:center;gap:11px;">
+          <div style="font-family:var(--serif);font-size:23px;">${counts[label]}</div>
+          <div><div style="font-size:11.5px;font-weight:700;">${label}</div><div style="font-size:10px;color:var(--t3);">${v.desc}</div></div>
+        </div>
+      </div>`).join('')}
+  </div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-h"><div class="card-t">Unverified claims</div><div class="card-sub">${unverified.length}</div></div>
+      ${unverified.length ? unverified.slice(0, 15).map(i => `
+        <div style="padding:9px 16px;border-bottom:1px solid var(--line);font-size:12px;">
+          <strong>${esc(i.name).substring(0, 55)}</strong>
+          <div style="font-size:10.5px;color:var(--t3);">${i.board} · ${esc(i.group?.title || i.homePerson || '')}</div>
+        </div>`).join('') : '<div class="empt">Everything carries evidence ✓</div>'}
+    </div>
+    <div class="card">
+      <div class="card-h"><div class="card-t">Past review-by date</div><div class="card-sub">${stale.length}</div></div>
+      ${stale.length ? stale.slice(0, 15).map(i => `
+        <div style="padding:9px 16px;border-bottom:1px solid var(--line);font-size:12px;">
+          <strong>${esc(i.name).substring(0, 55)}</strong>
+          <div style="font-size:10.5px;color:var(--red);">Claim expired — re-verify against source</div>
+        </div>`).join('') : '<div class="empt">No stale claims ✓</div>'}
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Recruitment & Inductions
+// ═══════════════════════════════════════════════════════════════
+function renderRecruit(m) {
+  const items = BOARD_CACHE.candidates?.items || [];
+  m.innerHTML = bc('People', 'Recruitment <em>Pipeline</em>', `LH — Candidates · ${items.length} in pipeline`) +
+  pipelineView(items, 'candidates', 'Connect Monday.com and sync to load the candidate pipeline');
+}
+
+function renderInduct(m) {
+  const items = BOARD_CACHE.onboarding?.items || [];
+  m.innerHTML = bc('People', 'Induction <em>Tracker</em>', `LH — Staff Onboarding · ${items.length} in progress`) +
+  pipelineView(items, 'onboarding', 'Connect Monday.com and sync to load onboarding');
+}
+
+function pipelineView(items, boardKey, emptyMsg) {
+  if (!items.length) return `<div class="card"><div class="empt">${emptyMsg}</div></div>`;
+  // Group by board group (stage)
+  const stages = {};
+  items.forEach(i => {
+    const g = i.group?.title || 'Unsorted';
+    if (!stages[g]) stages[g] = [];
+    stages[g].push(i);
+  });
+  return `<div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:10px;">
+    ${Object.entries(stages).map(([stage, list]) => `
+      <div style="min-width:230px;flex:1;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--t3);padding:0 4px 8px;display:flex;justify-content:space-between;">
+          <span>${esc(stage)}</span><span>${list.length}</span>
+        </div>
+        ${list.map(i => `
+          <div class="card mb-3" style="cursor:pointer;" onclick="window.open('https://livinghorizon.monday.com/boards/${MONDAY_CONFIG.boards[boardKey].id}/pulses/${i.id}','_blank')">
+            <div class="card-body" style="padding:11px 13px;">
+              <div style="font-size:12.5px;font-weight:600;">${esc(i.name)}</div>
+              ${Object.values(i.cols || {}).filter(c => c.label).slice(0, 2).map(c => `<span class="pill gy" style="margin-top:5px;margin-right:4px;">${esc(c.label)}</span>`).join('')}
+            </div>
+          </div>`).join('')}
+      </div>`).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — Connections
+// ═══════════════════════════════════════════════════════════════
+function renderConnect(m) {
+  m.innerHTML = bc('System', '<em>Connections</em>', 'Three integrations power the Command — each takes a minute or two') +
+  `<div class="grid-3">
+    <div class="conn-card ${CONN.gmailToken ? 'ok' : ''}">
+      <div class="conn-logo" style="background:#FCE8E6;">✉️</div>
+      <div style="flex:1;">
+        <div style="font-family:var(--serif);font-size:15px;margin-bottom:3px;">Gmail</div>
+        <div style="font-size:11.5px;color:var(--t3);line-height:1.6;margin-bottom:10px;">Inbox monitoring, categorisation, risk flags and reply sending. OAuth — your mail never touches a third-party server.</div>
+        ${CONN.gmailToken ?
+          `<span class="pill gr">● Connected this session</span>
+           <div style="margin-top:8px;"><button class="btn btn-sec btn-sm" onclick="gmailScan()">⟳ Scan inbox</button></div>` :
+          `<button class="btn btn-prim btn-sm" onclick="gmailConnect()">${CONN.googleClientId ? 'Sign in with Google' : 'Set up →'}</button>`}
+      </div>
+    </div>
+    <div class="conn-card ${CONN.mondayToken ? 'ok' : ''}">
+      <div class="conn-logo" style="background:#EDF2FE;">📋</div>
+      <div style="flex:1;">
+        <div style="font-family:var(--serif);font-size:15px;margin-bottom:3px;">Monday.com</div>
+        <div style="font-size:11.5px;color:var(--t3);line-height:1.6;margin-bottom:10px;">Two-way board sync — compliance actions, certificates, candidates, onboarding. Uses your personal API token.</div>
+        ${CONN.mondayToken ?
+          `<span class="pill gr">● Connected</span>
+           <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-sec btn-sm" onclick="syncAllBoards().then(()=>{scanCertRisks();render();toast('Synced ✓')})">⟳ Sync</button>
+           <button class="btn btn-ghost btn-sm" onclick="setupMonday()">Change token</button></div>` :
+          `<button class="btn btn-prim btn-sm" onclick="setupMonday()">Set up →</button>`}
+      </div>
+    </div>
+    <div class="conn-card ${CONN.aiKey ? 'ok' : ''}">
+      <div class="conn-logo" style="background:var(--gold-soft);">✦</div>
+      <div style="flex:1;">
+        <div style="font-family:var(--serif);font-size:15px;margin-bottom:3px;">AI engine</div>
+        <div style="font-size:11.5px;color:var(--t3);line-height:1.6;margin-bottom:10px;">Claude powers deep triage, the morning brief, reply drafting, risk counsel and compliance analysis.</div>
+        ${CONN.aiKey ?
+          `<span class="pill gr">● Active</span>
+           <div style="margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="setupAI()">Change key</button></div>` :
+          `<button class="btn btn-prim btn-sm" onclick="setupAI()">Set up →</button>`}
+      </div>
+    </div>
+  </div>
+  <div class="card mt-4">
+    <div class="card-h"><div class="card-t">Recent activity</div></div>
+    ${ACTIVITY.length ? ACTIVITY.slice(0, 20).map(a => `
+      <div style="padding:8px 18px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--t3);display:flex;gap:10px;">
+        <span class="mono" style="color:var(--t4);">${fDT(a.ts)}</span>
+        <span style="flex:1;">${esc(a.type.replace(/_/g, ' '))} ${a.detail ? '· ' + esc(JSON.stringify(a.detail).substring(0, 80)) : ''}</span>
+      </div>`).join('') : '<div class="empt">No activity yet</div>'}
+  </div>`;
+}
+
+function setupMonday() {
+  openModal('Connect Monday.com', `
+    <div style="background:var(--gsf);border-left:3px solid var(--grn);padding:10px 13px;border-radius:0 8px 8px 0;margin-bottom:14px;font-size:12.5px;color:var(--t2);">
+      30 seconds. The token stays in this browser only and carries your own Monday permissions.
+    </div>
+    <div style="font-size:13px;line-height:1.85;color:var(--t2);margin-bottom:14px;">
+      <ol style="margin-left:20px;">
+        <li style="margin-bottom:8px;"><a href="https://livinghorizon.monday.com/apps/manage/tokens" target="_blank" style="color:var(--a);font-weight:600;">Open your Monday token page →</a><br>
+          <span style="font-size:11px;color:var(--t3);">(or: Monday → click your avatar, bottom-left → Developers → My access tokens)</span></li>
+        <li style="margin-bottom:8px;">Press <strong>Show</strong> next to your personal token, then <strong>Copy</strong></li>
+        <li>Paste it below</li>
+      </ol>
+    </div>
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">API token</label>
+    <input id="mToken" type="password" placeholder="eyJhbGciOiJIUzI1NiJ9…" value="${esc(CONN.mondayToken)}" style="width:100%;padding:10px 13px;border:1.5px solid var(--line2);border-radius:var(--r3);font-family:var(--mono);font-size:12px;outline:none;">
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="saveMondayToken()">Save &amp; test</button>
+  `);
+}
+
+async function saveMondayToken() {
+  const v = document.getElementById('mToken')?.value?.trim();
+  if (!v) { toast('Paste your token'); return; }
+  CONN.mondayToken = v;
+  closeModal();
+  toast('Testing connection…');
+  try {
+    const d = await mondayQuery('query { me { name email } }');
+    updateConnDots();
+    toast(`Connected as ${d.me.name} ✓ — syncing boards…`);
+    await syncAllBoards();
+    scanCertRisks();
+    render();
+  } catch (e) {
+    CONN.mondayToken = '';
+    updateConnDots();
+    toast('Token rejected — check and try again');
+  }
+}
+
+function setupAI() {
+  openModal('AI engine', `
+    <div style="font-size:13px;line-height:1.8;color:var(--t2);margin-bottom:14px;">
+      Paste an Anthropic API key from <strong>console.anthropic.com</strong> → API keys. Stored in this browser only.
+    </div>
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">Anthropic API key</label>
+    <input id="aiKeyIn" type="password" placeholder="sk-ant-…" value="${esc(CONN.aiKey)}" style="width:100%;padding:10px 13px;border:1.5px solid var(--line2);border-radius:var(--r3);font-family:var(--mono);font-size:12px;outline:none;">
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="saveAIKeyLC()">Save</button>
+  `);
+}
+
+function saveAIKeyLC() {
+  const v = document.getElementById('aiKeyIn')?.value?.trim();
+  if (!v) { toast('Paste a key'); return; }
+  CONN.aiKey = v;
+  updateConnDots(); closeModal(); render();
+  toast('AI engine active ✓');
+}
+
+// ── GLOBAL SEARCH ─────────────────────────────────────────────
+function globalSearch(q) {
+  if (!q) return;
+  const ql = q.toLowerCase();
+  const mails = EMAILS.filter(e => (e.subject + e.from + e.snippet).toLowerCase().includes(ql)).slice(0, 6);
+  const certs = (BOARD_CACHE.certs?.items || []).filter(c => (c.name + (c.group?.title||'') + (c.certType||'')).toLowerCase().includes(ql)).slice(0, 6);
+  const comp = (BOARD_CACHE.compliance?.items || []).filter(i => (i.name + (i.homePerson||'')).toLowerCase().includes(ql)).slice(0, 6);
+  openModal(`Search — "${esc(q)}"`, `
+    ${mails.length ? `<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--t3);margin-bottom:6px;">Mail</div>` + mails.map(e => `<div style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px;" onclick="closeModal();openMail('${e.id}')"><strong>${esc(e.fromName)}</strong> — ${esc(e.subject)}</div>`).join('') : ''}
+    ${certs.length ? `<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--t3);margin:12px 0 6px;">Certificates</div>` + certs.map(c => `<div style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px;" onclick="closeModal();openCert('${c.id}')"><strong>${esc(c.group?.title||'')}</strong> — ${esc(c.certType || c.name)}</div>`).join('') : ''}
+    ${comp.length ? `<div style="font-size:10px;font-weight:800;letter-spacing:0.1em;text-transform:uppercase;color:var(--t3);margin:12px 0 6px;">Compliance</div>` + comp.map(i => `<div style="padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px;" onclick="closeModal();openComplianceItem('${i.id}')">${esc(i.name)}</div>`).join('') : ''}
+    ${!mails.length && !certs.length && !comp.length ? '<div class="empt">Nothing found</div>' : ''}
+  `);
+}
+
+// ── BOOT ──────────────────────────────────────────────────────
+updateConnDots();
+updateBadges();
+render();
+// Gentle auto-rescan every 5 minutes when connected
+setInterval(() => { if (CONN.gmailToken) gmailScan(15); }, 5 * 60 * 1000);
+</script>
+</body>
+</html>
