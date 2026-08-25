@@ -185,6 +185,16 @@ main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
 .brief-text{font-size:13.5px;line-height:1.75;color:rgba(245,242,234,0.88);max-width:820px;}
 
 
+
+/* ═══ AI DOCK — assistant on every page ═══ */
+#dockBtn{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:16px;background:linear-gradient(135deg,var(--gold),#8A6D2B);border:none;cursor:pointer;box-shadow:0 6px 24px rgba(184,147,62,0.45);z-index:90;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:23px;color:var(--ink);transition:transform 0.15s;}
+#dockBtn:hover{transform:scale(1.07);}
+#dock{position:fixed;top:0;right:0;bottom:0;width:min(430px,94vw);background:var(--panel);border-left:1px solid var(--line);box-shadow:-12px 0 40px rgba(13,19,33,0.14);z-index:95;display:flex;flex-direction:column;transform:translateX(105%);transition:transform 0.26s cubic-bezier(0.2,0.9,0.3,1);}
+#dock.open{transform:none;}
+.dock-h{padding:14px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;background:var(--ink);}
+.dock-h .dock-mark{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--gold),#8A6D2B);display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:14px;color:var(--ink);}
+.dock-title{font-family:var(--serif);font-size:14px;color:#F5F2EA;flex:1;}
+
 /* ═══ ACCESS GATE ═══ */
 #gate{position:fixed;inset:0;background:var(--ink);z-index:1000;display:flex;align-items:center;justify-content:center;}
 .gate-box{text-align:center;max-width:340px;padding:20px;}
@@ -258,6 +268,15 @@ main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
       Board Command
     </button>
+    <button class="nav-btn" data-pg="oversight" onclick="nav('oversight')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+      Oversight
+      <span class="nav-badge" id="badgeOversight" style="display:none;">0</span>
+    </button>
+    <button class="nav-btn" data-pg="intel" onclick="nav('intel')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Dashboards
+    </button>
     <button class="nav-btn" data-pg="pushqueue" onclick="nav('pushqueue')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
       Sync Queue
@@ -328,6 +347,24 @@ main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
     <div class="modal-h"><div class="modal-t" id="modalT"></div><button class="modal-x" onclick="closeModal()">✕</button></div>
     <div class="modal-b" id="modalB"></div>
     <div class="modal-f" id="modalF"></div>
+  </div>
+</div>
+
+<button id="dockBtn" onclick="toggleDock()" title="Talk to your assistant (from any page)">§</button>
+<div id="dock">
+  <div class="dock-h">
+    <div class="dock-mark">§</div>
+    <div class="dock-title">Assistant</div>
+    <button class="btn btn-ghost btn-sm" style="color:rgba(245,242,234,0.6);" onclick="nav('assistant');toggleDock(false);">Full page</button>
+    <button class="modal-x" onclick="toggleDock(false)">✕</button>
+  </div>
+  <div id="dockScroll" style="flex:1;overflow-y:auto;padding:14px 16px;"></div>
+  <div style="border-top:1px solid var(--line);padding:10px 13px;display:flex;gap:8px;align-items:flex-end;">
+    <textarea id="dockIn" rows="1" placeholder="Ask or instruct… (Enter to send)"
+      style="flex:1;padding:9px 13px;border:1.5px solid var(--line2);border-radius:11px;font-family:var(--sans);font-size:12.5px;outline:none;resize:none;max-height:100px;line-height:1.5;"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,100)+'px';"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat(null,'dock');}"></textarea>
+    <button class="btn btn-gold btn-sm" onclick="sendChat(null,'dock')" style="border-radius:11px;">↑</button>
   </div>
 </div>
 <div id="toast"></div>
@@ -505,6 +542,8 @@ function render() {
   else if (curPage === 'drafts') renderDrafts(m);
   else if (curPage === 'risk') renderRisk(m);
   else if (curPage === 'boards') renderBoards(m);
+  else if (curPage === 'oversight') renderOversight(m);
+  else if (curPage === 'intel') renderIntel(m);
   else if (curPage === 'pushqueue') renderSyncQueue(m);
   else if (curPage === 'compliance') renderCompliance(m);
   else if (curPage === 'certs') renderCerts(m);
@@ -532,6 +571,7 @@ function updateBadges() {
   setB('badgeCerts', certs);
   setB('badgeSync', SYNC_QUEUE.filter(s => s.status === 'pending').length);
   if (typeof MY_TASKS !== 'undefined') setB('badgeBoard', MY_TASKS.filter(t => t.col !== 'done').length);
+  if (typeof computeOversight === 'function' && OVERSIGHT_CACHE.lastSync) { const ov = computeOversight(); setB('badgeOversight', ov.totals.overdue + ov.totals.stuck); }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -972,7 +1012,7 @@ async function runFullScan() {
   toast('Full scan started…');
   const jobs = [];
   if (CONN.gmailToken) jobs.push(gmailScan());
-  if (CONN.mondayToken) jobs.push(syncAllBoards());
+  if (CONN.mondayToken) { jobs.push(syncAllBoards()); jobs.push(syncOversight()); }
   await Promise.allSettled(jobs);
   if (!CONN.gmailToken && !CONN.mondayToken) {
     toast('Nothing connected yet — set up Gmail and Monday.com in Connections');
@@ -1148,6 +1188,18 @@ function renderDash(m) {
     </div>
   </div>` +
 
+  (OVERSIGHT_CACHE.lastSync ? (function(){ const o = computeOversight(); const worst = o.boards.filter(b => b.exceptions.length).slice(0, 4);
+    return `<div class="card mb-4">
+      <div class="card-h"><div class="card-t">Execution watch</div>
+        <div class="card-sub">${o.totals.overdue} overdue · ${o.totals.stuck} stuck · ${o.totals.unassigned} unowned · ${o.totals.stale} quiet</div>
+        <button class="btn btn-ghost btn-sm" onclick="nav('oversight')">Full oversight →</button>
+      </div>
+      ${worst.length ? worst.map(b => `<div style="padding:9px 18px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center;font-size:12px;cursor:pointer;" onclick="nav('oversight',{area:'${b.area}'})">
+        <span style="font-family:var(--serif);font-weight:600;color:${b.score>=85?'var(--grn)':b.score>=60?'var(--amb)':'var(--red)'};min-width:32px;">${b.score}</span>
+        <strong style="flex:1;">${esc(b.name)}</strong>
+        <span style="color:var(--t3);">${b.exceptions.length} exception${b.exceptions.length===1?'':'s'}</span>
+      </div>`).join('') : '<div class="empt" style="padding:14px;">Everything is being done ✓</div>'}
+    </div>`; })() : '') +
   `<div class="card">
     <div class="card-h"><div class="card-t">Certificate horizon — all eight homes</div><button class="btn btn-ghost btn-sm" onclick="nav('certs')">Full planner →</button></div>
     <div class="card-body">${certLanes(certs)}</div>
@@ -1968,6 +2020,18 @@ function saveAIKeyLC() {
   toast('AI engine active ✓');
 }
 
+// ── AI DOCK ───────────────────────────────────────────────────
+function toggleDock(force) {
+  const d = document.getElementById('dock');
+  const open = typeof force === 'boolean' ? force : !d.classList.contains('open');
+  d.classList.toggle('open', open);
+  if (open) { renderChatMessages(false); setTimeout(() => document.getElementById('dockIn')?.focus(), 250); }
+}
+function askDock(question) {
+  toggleDock(true);
+  sendChat(question, 'dock');
+}
+
 // ── GLOBAL SEARCH ─────────────────────────────────────────────
 function globalSearch(q) {
   if (!q) return;
@@ -2021,6 +2085,7 @@ RISK REGISTER: ${risks.map(r => `[${r.severity}] ${r.title}`).join(' | ') || 'cl
 COMPLIANCE ACTIONS (Monday, ${comp.length} open): critical/high: ${comp.filter(i => i.priority === 'Critical' || i.priority === 'High').map(i => `${i.name} (${i.homePerson || '?'}${i.due ? ', due ' + i.due : ''})`).slice(0, 10).join(' | ') || 'none'}
 CERTIFICATES (${certs.length} tracked, ${certBad.length} at risk): ${certBad.slice(0, 12).map(c => `${c.group?.title || '?'}: ${c.certType || c.name} — ${c.renewal}${c.expiry ? ' exp ' + c.expiry : ''}`).join(' | ') || 'all current'}
 SYNC QUEUE: ${pendingSync.length} pending pushes to Monday
+${typeof oversightSummaryLine === 'function' ? oversightSummaryLine() : ''}
 CONNECTIONS: Gmail ${CONN.gmailToken ? 'LIVE (' + (CONN.gmailEmail || '') + ')' : 'offline'} · Monday ${CONN.mondayToken ? 'LIVE' : 'offline'}`;
 }
 
@@ -2079,7 +2144,7 @@ const AI_TOOLS = [
     name: 'get_business_data',
     description: 'Pull detailed live data beyond the snapshot: full email list, all compliance items, every certificate, all tasks, risk register.',
     input_schema: { type: 'object', properties: {
-      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts'] },
+      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts', 'oversight'] },
     }, required: ['area'] },
   },
 ];
@@ -2131,6 +2196,7 @@ async function executeAITool(name, input) {
       if (a === 'tasks') return { ok: true, msg: JSON.stringify(MY_TASKS) };
       if (a === 'risks') return { ok: true, msg: JSON.stringify(RISK_REGISTER.filter(r => !r.resolved)) };
       if (a === 'drafts') return { ok: true, msg: JSON.stringify(DRAFTS.slice(0, 10).map(d => ({ to: d.to, subject: d.subject, status: d.status }))) };
+      if (a === 'oversight') { const o = computeOversight(); return { ok: true, msg: JSON.stringify({ lastSync: OVERSIGHT_CACHE.lastSync, totals: o.totals, boards: o.boards.map(b => ({ name: b.name, score: b.score, open: b.open, exceptions: b.exceptions.slice(0, 12) })) }) }; }
       return { ok: false, msg: 'Unknown area' };
     }
     return { ok: false, msg: 'Unknown tool' };
@@ -2187,12 +2253,12 @@ async function runAgentLoop(userMsg) {
   return { text: 'I hit the action limit for one message — the work so far is done. Ask me to continue.', chips, pendingMail };
 }
 
-async function sendChat(preset) {
-  const input = document.getElementById('chatIn');
+async function sendChat(preset, source) {
+  const input = document.getElementById(source === 'dock' ? 'dockIn' : 'chatIn') || document.getElementById('dockIn') || document.getElementById('chatIn');
   const msg = (preset || input?.value || '').trim();
   if (!msg) return;
   if (!CONN.aiKey) { toast('Connect the AI engine first'); nav('connect'); return; }
-  if (input) input.value = '';
+  if (input) { input.value = ''; input.style.height = 'auto'; }
   CHAT.push({ role: 'user', content: msg, ts: new Date().toISOString() });
   persistChat(); renderChatMessages(true);
   try {
@@ -2244,8 +2310,20 @@ function renderAssistant(m) {
 }
 
 function renderChatMessages(thinking) {
-  const el = document.getElementById('chatScroll');
+  ['chatScroll', 'dockScroll'].forEach(id => renderChatInto(id, thinking));
+}
+function renderChatInto(targetId, thinking) {
+  const el = document.getElementById(targetId);
   if (!el) return;
+  if (targetId === 'dockScroll' && !CHAT.length && !thinking) {
+    el.innerHTML = `<div style="text-align:center;padding:30px 14px;">
+      <div style="font-family:var(--serif);font-size:26px;color:var(--gold);">§</div>
+      <div style="font-size:12px;color:var(--t3);margin:8px 0 14px;">Ask anything, from any page. I can see the whole estate — and act on it.</div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${["What's not being done right now?", "What's on my workload?", 'Add a task…'].map(s => `<button class="btn btn-sec btn-sm" onclick="sendChat('${s.replace(/'/g, "\\'")}','dock')">${s}</button>`).join('')}
+      </div></div>`;
+    return;
+  }
   if (CHAT.length) {
     el.innerHTML = CHAT.map((c, idx) => {
       if (c.role === 'user') {
@@ -2437,6 +2515,274 @@ function kbOpen(id) {
 function kbDelete(id) { MY_TASKS = MY_TASKS.filter(t => t.id !== id); persistChat(); updateBadges(); closeModal(); render(); toast('Deleted'); }
 function kbComplete(id) { const t = MY_TASKS.find(x => x.id === id); if (t) { t.col = 'done'; t.completedAt = new Date().toISOString(); } persistChat(); updateBadges(); closeModal(); render(); toast('Completed ✓'); }
 function kbReopen(id) { const t = MY_TASKS.find(x => x.id === id); if (t) t.col = 'todo'; persistChat(); updateBadges(); closeModal(); render(); }
+
+// ═══════════════════════════════════════════════════════════════
+// OVERSIGHT ENGINE — "is everything being done?"
+// Generic multi-board sync + exception detection + intelligence
+// ═══════════════════════════════════════════════════════════════
+
+// Full board registry — every operational board in the estate
+const OVERSIGHT_REGISTRY = {
+  complianceActions: { id: 5100308982, name: 'Compliance Actions',        area: 'compliance' },
+  safetyCerts:       { id: 5100299116, name: 'Safety Certificates',       area: 'compliance' },
+  cqcReadiness:      { id: 5100309746, name: 'CQC Readiness Audit',       area: 'compliance' },
+  cqcEvidence:       { id: 5102478963, name: 'CQC Evidence Map',          area: 'compliance' },
+  safeguarding:      { id: 5100803989, name: 'Safeguarding Log',          area: 'care' },
+  incidents:         { id: 5101742184, name: 'Incidents & Accidents',     area: 'care' },
+  medErrors:         { id: 5101742186, name: 'Medication Errors',         area: 'care' },
+  serviceUsers:      { id: 5100120676, name: 'Service Users',             area: 'care' },
+  referrals:         { id: 5100117595, name: 'Referrals',                 area: 'care' },
+  intakeQueue:       { id: 5101310362, name: 'Intake Queue',              area: 'care' },
+  complaints:        { id: 5100120679, name: 'Complaints & Compliments',  area: 'care' },
+  homeMobilisation:  { id: 5100249164, name: 'Home Mobilisation',         area: 'care' },
+  weeklyHS:          { id: 5100265156, name: 'Weekly H&S Checks',         area: 'safety' },
+  hsAudits:          { id: 5100804837, name: 'H&S Audits',                area: 'safety' },
+  hsActionPlan:      { id: 5102851762, name: 'H&S Action Plan',           area: 'safety' },
+  mgmtWalkthroughs:  { id: 5102850154, name: 'Management Walkthroughs',   area: 'safety' },
+  candidates:        { id: 5100120358, name: 'Candidates',                area: 'people' },
+  onboarding:        { id: 5100249166, name: 'Staff Onboarding',          area: 'people' },
+  idVerification:    { id: 5101318487, name: 'ID Verification Ledger',    area: 'people' },
+  staffFilesAudit:   { id: 5100120264, name: 'Staff Files Audit',         area: 'people' },
+  staffTraining:     { id: 5100804839, name: 'Staff Training',            area: 'people' },
+  competency:        { id: 5100120502, name: 'Competency Checks',         area: 'people' },
+  medCompetency:     { id: 5100805538, name: 'Medication Competency',     area: 'people' },
+  appraisals:        { id: 5100120246, name: 'Appraisals & Supervision',  area: 'people' },
+  weeklyMgrs:        { id: 5100683037, name: 'Weekly Managers Meeting',   area: 'exec' },
+  seniorMgrs:        { id: 5100845036, name: 'Senior Managers Meeting',   area: 'exec' },
+  adminTasks:        { id: 5102035182, name: 'Admin Tasks',               area: 'exec' },
+  headPCTasks:       { id: 5102035180, name: 'Head of P&C Tasks',         area: 'exec' },
+  housesRevenue:     { id: 5102244776, name: 'Houses & Revenue',          area: 'exec' },
+};
+
+const AREA_META = {
+  compliance: { label: 'Compliance & CQC', icon: '🛡' },
+  care:       { label: 'Care & Safeguarding', icon: '🩺' },
+  safety:     { label: 'Health & Safety', icon: '🦺' },
+  people:     { label: 'People & Workforce', icon: '👥' },
+  exec:       { label: 'Executive & Operations', icon: '📌' },
+};
+
+// Your real Monday dashboards — linked from the Intelligence page
+const MONDAY_DASHBOARDS = [
+  { id: 12714444, name: 'Command Centre — Daily',              tabs: ['exec', 'compliance'] },
+  { id: 12651195, name: 'Care & Referrals',                    tabs: ['care'] },
+  { id: 12651196, name: 'Workforce & Compliance',              tabs: ['people', 'compliance'] },
+  { id: 12700813, name: 'Recruitment & Safer-Recruitment',     tabs: ['people'] },
+  { id: 12714489, name: 'Houses & Revenue — Live',             tabs: ['exec'] },
+];
+
+const DONE_LABELS = /^(done|complete|completed|approved|passed|valid|closed|resolved|hired|sent|verified|signed off|signed-off|received|finished|yes|n\/a|not applicable|no longer needed|booked)$/i;
+const STUCK_LABELS = /(stuck|blocked|failed|overdue|missing|expired|rejected|escalat|breach|urgent|critical)/i;
+const STALE_DAYS = 14;
+
+// Generic board sync — pulls every registry board with status/date/people extraction
+async function syncOversight(progressCb) {
+  const keys = Object.keys(OVERSIGHT_REGISTRY);
+  let done = 0;
+  OVERSIGHT_CACHE.boards = OVERSIGHT_CACHE.boards || {};
+  for (const key of keys) {
+    const reg = OVERSIGHT_REGISTRY[key];
+    try {
+      const q = `query($bid:[ID!]){
+        boards(ids:$bid){ id name items_count
+          columns{ id title type }
+          items_page(limit:100){ items{ id name updated_at group{ id title }
+            column_values{ id text type ... on StatusValue{ label } ... on DateValue{ date } ... on PeopleValue{ persons_and_teams{ id } } }
+          } }
+        }
+      }`;
+      const d = await mondayQuery(q, { bid: [String(reg.id)] });
+      const board = d.boards?.[0];
+      if (!board) continue;
+      const colTypes = {};
+      (board.columns || []).forEach(c => colTypes[c.id] = { title: c.title, type: c.type });
+      OVERSIGHT_CACHE.boards[key] = {
+        id: board.id, name: reg.name, area: reg.area,
+        total: board.items_count, fetched: new Date().toISOString(),
+        items: (board.items_page?.items || []).map(it => {
+          const statuses = [], dates = [], hasPeople = { any: false, filled: false };
+          (it.column_values || []).forEach(cv => {
+            if (cv.type === 'status' && cv.label) statuses.push({ col: colTypes[cv.id]?.title || cv.id, label: cv.label });
+            if (cv.type === 'date' && cv.date) dates.push({ col: colTypes[cv.id]?.title || cv.id, date: cv.date });
+            if (cv.type === 'people') { hasPeople.any = true; if (cv.persons_and_teams?.length) hasPeople.filled = true; }
+          });
+          return { id: it.id, name: it.name, group: it.group?.title || '', updatedAt: it.updated_at, statuses, dates, people: hasPeople };
+        }),
+      };
+    } catch (e) { console.warn('Oversight sync failed', key, e.message); }
+    done++;
+    if (progressCb) progressCb(done, keys.length, reg.name);
+  }
+  OVERSIGHT_CACHE.lastSync = new Date().toISOString();
+  persistOversight();
+}
+
+let OVERSIGHT_CACHE = JSON.parse(localStorage.getItem('lc_oversight') || '{"boards":{}}');
+function persistOversight() {
+  try { localStorage.setItem('lc_oversight', JSON.stringify(OVERSIGHT_CACHE)); } catch (e) {
+    // localStorage full — drop item detail, keep summaries
+    try {
+      const slim = { lastSync: OVERSIGHT_CACHE.lastSync, boards: {} };
+      Object.entries(OVERSIGHT_CACHE.boards).forEach(([k, b]) => {
+        slim.boards[k] = { ...b, items: b.items.slice(0, 40) };
+      });
+      localStorage.setItem('lc_oversight', JSON.stringify(slim));
+    } catch (e2) {}
+  }
+}
+
+// The accountability sweep — what is NOT being done?
+function computeOversight() {
+  const out = { boards: [], totals: { overdue: 0, stuck: 0, unassigned: 0, stale: 0, items: 0 } };
+  Object.entries(OVERSIGHT_CACHE.boards || {}).forEach(([key, b]) => {
+    const ex = [];
+    (b.items || []).forEach(it => {
+      const isDone = it.statuses.some(s => DONE_LABELS.test(s.label));
+      if (isDone) return;
+      // Overdue: any date in the past on a not-done item
+      const past = it.dates.filter(d => daysUntil(d.date) !== null && daysUntil(d.date) < 0);
+      if (past.length) ex.push({ type: 'overdue', item: it.name, id: it.id, detail: `${past[0].col} was ${fD(past[0].date)} (${Math.abs(daysUntil(past[0].date))}d ago)`, group: it.group });
+      // Stuck: status literally says so
+      const stuck = it.statuses.find(s => STUCK_LABELS.test(s.label));
+      if (stuck) ex.push({ type: 'stuck', item: it.name, id: it.id, detail: `${stuck.col}: ${stuck.label}`, group: it.group });
+      // Unassigned: board uses people columns but this item has nobody
+      if (it.people.any && !it.people.filled) ex.push({ type: 'unassigned', item: it.name, id: it.id, detail: 'No owner assigned', group: it.group });
+      // Stale: untouched for STALE_DAYS
+      if (it.updatedAt && (Date.now() - new Date(it.updatedAt)) / 86400000 > STALE_DAYS)
+        ex.push({ type: 'stale', item: it.name, id: it.id, detail: `No activity for ${Math.floor((Date.now() - new Date(it.updatedAt)) / 86400000)} days`, group: it.group });
+    });
+    // Dedupe per item per type, score the board
+    const seen = new Set();
+    const clean = ex.filter(e => { const k = e.id + e.type; if (seen.has(k)) return false; seen.add(k); return true; });
+    const openItems = (b.items || []).filter(it => !it.statuses.some(s => DONE_LABELS.test(s.label))).length;
+    const weight = { overdue: 3, stuck: 3, unassigned: 1.5, stale: 1 };
+    const penalty = clean.reduce((a, e) => a + weight[e.type], 0);
+    const score = Math.max(0, Math.round(100 - (openItems ? (penalty / Math.max(openItems, 1)) * 22 : 0)));
+    clean.forEach(e => out.totals[e.type]++);
+    out.totals.items += b.items?.length || 0;
+    out.boards.push({ key, name: b.name, area: b.area, boardId: b.id, total: b.total, loaded: b.items?.length || 0, open: openItems, exceptions: clean, score, fetched: b.fetched });
+  });
+  out.boards.sort((a, b) => a.score - b.score);
+  return out;
+}
+
+function oversightSummaryLine() {
+  const o = computeOversight();
+  if (!o.boards.length) return 'Oversight: not yet synced.';
+  const worst = o.boards.slice(0, 4).filter(b => b.score < 85);
+  return `OVERSIGHT (${o.boards.length} boards audited): ${o.totals.overdue} overdue, ${o.totals.stuck} stuck, ${o.totals.unassigned} unassigned, ${o.totals.stale} stale. Weakest boards: ${worst.map(b => `${b.name} (${b.score}/100)`).join(', ') || 'all healthy'}`;
+}
+
+// ═══ RENDER — Oversight page ═══
+function renderOversight(m) {
+  const o = computeOversight();
+  const synced = Object.keys(OVERSIGHT_CACHE.boards || {}).length;
+  const filter = curState.area || 'all';
+  const shown = filter === 'all' ? o.boards : o.boards.filter(b => b.area === filter);
+
+  m.innerHTML = bc('Monday.com', 'Execution <em>Oversight</em>', `Is everything being done? ${synced ? `${synced} boards audited · last sweep ${OVERSIGHT_CACHE.lastSync ? relTime(OVERSIGHT_CACHE.lastSync) + ' ago' : 'never'}` : 'Run the first sweep to find out'}`) +
+  `<div class="grid-4 mb-4">
+    <div class="kpi ${o.totals.overdue ? 'rd' : 'gr'}"><div class="kpi-label">Overdue</div><div class="kpi-val">${o.totals.overdue}</div><div class="kpi-note">past their date, not done</div></div>
+    <div class="kpi ${o.totals.stuck ? 'rd' : 'gr'}"><div class="kpi-label">Stuck / flagged</div><div class="kpi-val">${o.totals.stuck}</div><div class="kpi-note">status says trouble</div></div>
+    <div class="kpi ${o.totals.unassigned ? 'am' : 'gr'}"><div class="kpi-label">No owner</div><div class="kpi-val">${o.totals.unassigned}</div><div class="kpi-note">nobody accountable</div></div>
+    <div class="kpi ${o.totals.stale ? 'am' : 'gr'}"><div class="kpi-label">Gone quiet</div><div class="kpi-val">${o.totals.stale}</div><div class="kpi-note">untouched ${STALE_DAYS}+ days</div></div>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap;">
+    <button class="btn btn-sm ${filter==='all'?'btn-prim':'btn-sec'}" onclick="nav('oversight')">All areas</button>
+    ${Object.entries(AREA_META).map(([k, a]) => `<button class="btn btn-sm ${filter===k?'btn-prim':'btn-sec'}" onclick="nav('oversight',{area:'${k}'})">${a.icon} ${a.label}</button>`).join('')}
+    <div style="flex:1;"></div>
+    ${CONN.aiKey && synced ? `<button class="btn btn-sec btn-sm" onclick="askDock('Review the oversight sweep — what is not being done, who should be chased, and in what order?')">✦ Ask the Assistant</button>` : ''}
+    ${CONN.mondayToken ? `<button class="btn btn-gold btn-sm" id="ovSyncBtn" onclick="runOversightSweep()">⟳ Run full sweep</button>` : '<span style="font-size:11px;color:var(--t3);align-self:center;">Connect Monday.com to sweep</span>'}
+  </div>
+  ${shown.length ? shown.map(b => {
+    const sc = b.score >= 85 ? 'var(--grn)' : b.score >= 60 ? 'var(--amb)' : 'var(--red)';
+    return `<div class="card mb-3">
+      <div class="card-h" style="cursor:pointer;" onclick="this.parentElement.querySelector('.ov-detail').style.display=this.parentElement.querySelector('.ov-detail').style.display==='none'?'block':'none';">
+        <div style="width:38px;height:38px;border-radius:10px;border:3px solid ${sc};display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:13px;font-weight:600;color:${sc};">${b.score}</div>
+        <div style="flex:1;">
+          <div class="card-t" style="font-size:14px;">${esc(b.name)}</div>
+          <div style="font-size:10.5px;color:var(--t3);">${AREA_META[b.area]?.label || ''} · ${b.open} open of ${b.loaded} loaded${b.total > b.loaded ? ` (${b.total} on board)` : ''} · ${b.exceptions.length} exception${b.exceptions.length===1?'':'s'}</div>
+        </div>
+        ${b.exceptions.length ? `<span class="pill ${b.score < 60 ? 'rd' : 'am'}">${b.exceptions.length} ⚠</span>` : '<span class="pill gr">clean ✓</span>'}
+        <a class="btn btn-ghost btn-sm" href="https://livinghorizon.monday.com/boards/${b.boardId}" target="_blank" onclick="event.stopPropagation();">Open →</a>
+      </div>
+      <div class="ov-detail" style="display:none;">
+        ${b.exceptions.length ? b.exceptions.slice(0, 25).map(e => `
+          <div style="padding:9px 18px;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;font-size:12px;">
+            <span class="pill ${e.type==='overdue'||e.type==='stuck'?'rd':e.type==='unassigned'?'am':'gy'}" style="min-width:76px;justify-content:center;">${e.type}</span>
+            <a style="font-weight:600;color:var(--t1);text-decoration:none;flex:1;" target="_blank" href="https://livinghorizon.monday.com/boards/${b.boardId}/pulses/${e.id}">${esc(e.item)}</a>
+            <span style="color:var(--t3);font-size:11px;">${esc(e.detail)}</span>
+          </div>`).join('') : '<div class="empt" style="padding:16px;">Nothing wrong on this board</div>'}
+      </div>
+    </div>`;
+  }).join('') : `<div class="card"><div class="empt">${synced ? 'No boards in this area' : 'Press ⟳ Run full sweep to audit every board in the estate'}</div></div>`}`;
+}
+
+async function runOversightSweep() {
+  const btn = document.getElementById('ovSyncBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sweeping…'; }
+  toast('Auditing every board — ~30 seconds…');
+  await syncOversight((done, total, name) => { if (btn) btn.textContent = `⟳ ${done}/${total} — ${name.substring(0, 18)}`; });
+  // Feed critical failures into the risk register
+  const o = computeOversight();
+  o.boards.filter(b => ['safeguarding', 'medErrors', 'incidents', 'safetyCerts', 'complianceActions'].includes(b.key)).forEach(b => {
+    b.exceptions.filter(e => e.type === 'overdue' || e.type === 'stuck').slice(0, 3).forEach(e => {
+      if (!RISK_REGISTER.find(r => r.ovId === b.key + e.id + e.type && !r.resolved)) {
+        RISK_REGISTER.unshift({
+          id: 'rk_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), ovId: b.key + e.id + e.type,
+          ts: new Date().toISOString(), severity: 'high', source: 'oversight',
+          title: `${b.name}: ${e.item}`, detail: e.detail, action: 'Chase the owner or resolve on the board', resolved: false,
+        });
+      }
+    });
+  });
+  persist(); updateBadges();
+  toast('Sweep complete ✓');
+  render();
+}
+
+// ═══ RENDER — Intelligence (your Monday dashboards, mirrored) ═══
+function renderIntel(m) {
+  const tab = curState.tab || 'exec';
+  const o = computeOversight();
+  const areaBoards = o.boards.filter(b => b.area === tab);
+  const dash = MONDAY_DASHBOARDS.filter(d => d.tabs.includes(tab));
+
+  m.innerHTML = bc('Monday.com', 'Intelligence <em>Dashboards</em>', 'Your Monday dashboards, mirrored live — with the exceptions they never show you') +
+  `<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;">
+    ${Object.entries(AREA_META).map(([k, a]) => `<button class="btn btn-sm ${tab===k?'btn-prim':'btn-sec'}" onclick="nav('intel',{tab:'${k}'})">${a.icon} ${a.label}</button>`).join('')}
+    <div style="flex:1;"></div>
+    ${dash.map(d => `<a class="btn btn-ghost btn-sm" style="text-decoration:none;" target="_blank" href="https://livinghorizon.monday.com/overviews/${d.id}">↗ ${esc(d.name)}</a>`).join('')}
+  </div>` +
+  (areaBoards.length ? `<div class="grid-2">
+    ${areaBoards.map(b => {
+      // Status distribution across the board's primary status column
+      const dist = {};
+      (OVERSIGHT_CACHE.boards[b.key]?.items || []).forEach(it => {
+        const s = it.statuses[0]?.label || 'No status';
+        dist[s] = (dist[s] || 0) + 1;
+      });
+      const entries = Object.entries(dist).sort((a, b2) => b2[1] - a[1]);
+      const total = entries.reduce((a, [, n]) => a + n, 0) || 1;
+      const colorFor = l => DONE_LABELS.test(l) ? 'var(--grn)' : STUCK_LABELS.test(l) ? 'var(--red)' : /working|progress|review|pending|await|interview|in /i.test(l) ? 'var(--amb)' : l === 'No status' ? '#C9CDD6' : 'var(--a)';
+      return `<div class="card">
+        <div class="card-h">
+          <div class="card-t" style="font-size:13.5px;">${esc(b.name)}</div>
+          <span class="pill ${b.score >= 85 ? 'gr' : b.score >= 60 ? 'am' : 'rd'}" style="margin-left:auto;">${b.score}/100</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;height:22px;border-radius:7px;overflow:hidden;margin-bottom:10px;">
+            ${entries.map(([l, n]) => `<div title="${esc(l)}: ${n}" style="width:${(n/total*100).toFixed(1)}%;background:${colorFor(l)};"></div>`).join('')}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:10.5px;color:var(--t3);">
+            ${entries.slice(0, 6).map(([l, n]) => `<span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${colorFor(l)};margin-right:4px;"></span>${esc(l)} · ${n}</span>`).join('')}
+          </div>
+          ${b.exceptions.length ? `<div style="margin-top:10px;padding:8px 11px;background:var(--rsf);border-radius:8px;font-size:11px;color:var(--red);font-weight:600;">${b.exceptions.length} exception${b.exceptions.length===1?'':'s'} — <a style="color:var(--red);cursor:pointer;text-decoration:underline;" onclick="nav('oversight',{area:'${b.area}'})">view in Oversight</a></div>` : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>` : `<div class="card"><div class="empt">Run the Oversight sweep first — this page draws from the same live data</div></div>`);
+}
 
 // ── BOOT ──────────────────────────────────────────────────────
 updateConnDots();
