@@ -580,12 +580,17 @@ function updateBadges() {
 // Current Anthropic model — update here only if Anthropic retires it
 const AI_MODEL = 'claude-sonnet-4-6';
 
+// Baked-in Google OAuth Client ID — paste yours between the quotes and every
+// device gets one-click Google sign-in with no setup. Client IDs are public
+// identifiers (not secrets), safe to ship in the page.
+const DEFAULT_GOOGLE_CLIENT_ID = '';
+
 const CONN = {
   get mondayToken() { return localStorage.getItem('lc_monday_token') || ''; },
   set mondayToken(v) { localStorage.setItem('lc_monday_token', v); },
   get aiKey() { return localStorage.getItem('lc_ai_key') || ''; },
   set aiKey(v) { localStorage.setItem('lc_ai_key', v); },
-  get googleClientId() { return localStorage.getItem('lc_google_client_id') || ''; },
+  get googleClientId() { return localStorage.getItem('lc_google_client_id') || DEFAULT_GOOGLE_CLIENT_ID; },
   set googleClientId(v) { localStorage.setItem('lc_google_client_id', v); },
   // Gmail access token — persisted with expiry so a page reload does NOT log you out
   get gmailToken() {
@@ -606,6 +611,22 @@ const CONN = {
   },
   gmailEmail: localStorage.getItem('lc_gmail_email') || '',
 };
+
+// Write critical keys (credentials, grants) even if storage is full:
+// purge bulky caches and retry rather than silently losing the sign-in.
+function safeSet(key, value) {
+  try { localStorage.setItem(key, value); return true; }
+  catch (e) {
+    try {
+      localStorage.removeItem('lc_oversight');
+      localStorage.removeItem('lc_board_cache');
+      localStorage.removeItem('lc_emails');
+      localStorage.setItem(key, value);
+      toast('Storage was full — caches cleared, sign-in preserved. Re-run the scan.');
+      return true;
+    } catch (e2) { return false; }
+  }
+}
 
 function updateConnDots() {
   const set = (id, state) => {
@@ -782,9 +803,9 @@ function gmailRequestToken() {
     scope: 'https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.modify',
     callback: (resp) => {
       if (resp.access_token) {
-        localStorage.setItem('lc_gmail_token_exp', String(Date.now() + ((resp.expires_in || 3300) - 300) * 1000));
+        safeSet('lc_gmail_granted', '1');
+        safeSet('lc_gmail_token_exp', String(Date.now() + ((resp.expires_in || 3300) - 300) * 1000));
         CONN.gmailToken = resp.access_token;
-        localStorage.setItem('lc_gmail_granted', '1');
         updateConnDots();
         scheduleGmailRefresh();
         toast('Gmail connected ✓ — scanning inbox…');
@@ -1954,6 +1975,23 @@ function renderConnect(m) {
     </div>
   </div>
   <div class="card mt-4">
+    <div class="card-h"><div class="card-t">Use on another device</div></div>
+    <div class="card-body" style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+      <div style="flex:1;min-width:240px;">
+        <div style="font-size:12.5px;color:var(--t2);line-height:1.7;margin-bottom:9px;">This site keeps its keys in each browser separately. To set up your phone or another computer in one paste, copy a transfer code here and paste it there.</div>
+        <button class="btn btn-sec btn-sm" onclick="exportSetup()">Copy transfer code</button>
+        <div style="font-size:10px;color:var(--amb);margin-top:7px;">⚠ The code contains your keys — send it to yourself privately (e.g. saved note), never post it.</div>
+      </div>
+      <div style="flex:1;min-width:240px;">
+        <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">Paste a transfer code on the new device</label>
+        <div style="display:flex;gap:7px;">
+          <input id="importCode" type="password" placeholder="LCC1…" style="flex:1;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-family:var(--mono);font-size:11.5px;outline:none;">
+          <button class="btn btn-prim btn-sm" onclick="importSetup()">Apply</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card mt-4">
     <div class="card-h"><div class="card-t">Recent activity</div></div>
     ${ACTIVITY.length ? ACTIVITY.slice(0, 20).map(a => `
       <div style="padding:8px 18px;border-bottom:1px solid var(--line);font-size:11.5px;color:var(--t3);display:flex;gap:10px;">
@@ -2023,6 +2061,39 @@ function saveAIKeyLC() {
   CONN.aiKey = v;
   updateConnDots(); closeModal(); render();
   toast('AI engine active ✓');
+}
+
+// ── DEVICE TRANSFER ───────────────────────────────────────────
+function exportSetup() {
+  const payload = {
+    v: 1,
+    cid: localStorage.getItem('lc_google_client_id') || '',
+    mt: localStorage.getItem('lc_monday_token') || '',
+    ai: localStorage.getItem('lc_ai_key') || '',
+    gg: localStorage.getItem('lc_gmail_granted') || '',
+    em: localStorage.getItem('lc_gmail_email') || '',
+  };
+  const code = 'LCC1' + btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  navigator.clipboard?.writeText(code).then(
+    () => toast('Transfer code copied — paste it on the other device ✓'),
+    () => openModal('Transfer code', `<textarea style="width:100%;min-height:110px;font-family:var(--mono);font-size:10.5px;padding:10px;border:1.5px solid var(--line2);border-radius:8px;" readonly>${esc(code)}</textarea>`)
+  );
+}
+
+function importSetup() {
+  const raw = document.getElementById('importCode')?.value?.trim();
+  if (!raw || !raw.startsWith('LCC1')) { toast('Paste a valid transfer code (starts LCC1)'); return; }
+  try {
+    const p = JSON.parse(decodeURIComponent(escape(atob(raw.slice(4)))));
+    if (p.cid) safeSet('lc_google_client_id', p.cid);
+    if (p.mt) safeSet('lc_monday_token', p.mt);
+    if (p.ai) safeSet('lc_ai_key', p.ai);
+    if (p.gg) safeSet('lc_gmail_granted', p.gg);
+    if (p.em) safeSet('lc_gmail_email', p.em);
+    updateConnDots();
+    toast('Setup transferred ✓ — press Sign in with Google once on this device');
+    render();
+  } catch (e) { toast('Code not recognised — copy it again'); }
 }
 
 // ── AI DOCK ───────────────────────────────────────────────────
