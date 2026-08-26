@@ -381,7 +381,9 @@ async function gateCheck() {
   const hex = [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
   if (hex === GATE_HASH) {
     localStorage.setItem('lc_gate_until', String(Date.now() + 30 * 24 * 60 * 60 * 1000));
+    localStorage.setItem('lc_auth_code', v); // doubles as the backend API credential
     document.getElementById('gate').style.display = 'none';
+    if (typeof probeBackend === 'function') setTimeout(() => probeBackend().then(ok => { if (ok) { toast('Backend connected ✓'); syncStatePull(); render(); } }), 50);
   } else {
     const el = document.getElementById('gateIn');
     el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
@@ -585,12 +587,41 @@ const AI_MODEL = 'claude-sonnet-4-6';
 // identifiers (not secrets), safe to ship in the page.
 const DEFAULT_GOOGLE_CLIENT_ID = '';
 
+// Backend (Azure Static Web Apps). Same-origin '/api' is detected automatically
+// when the site is served from Azure. To ALSO give the GitHub Pages copy a
+// backend, paste the Azure URL here, e.g. 'https://xxxx.azurestaticapps.net/api'
+const DEFAULT_BACKEND_URL = '';
+let BACKEND_BASE = '';
+let SERVER_CFG = null;
+
+function authCode() { return localStorage.getItem('lc_auth_code') || ''; }
+
+async function probeBackend() {
+  const candidates = [];
+  if (location.protocol.startsWith('http')) candidates.push(location.origin + '/api');
+  if (DEFAULT_BACKEND_URL) candidates.push(DEFAULT_BACKEND_URL);
+  const code = authCode();
+  if (!code) return false;
+  for (const base of candidates) {
+    try {
+      const r = await fetch(base + '/config', { headers: { 'x-lc-auth': code } });
+      if (r.ok) {
+        SERVER_CFG = await r.json();
+        BACKEND_BASE = base;
+        updateConnDots();
+        return true;
+      }
+    } catch (e) { /* try next */ }
+  }
+  return false;
+}
+
 const CONN = {
-  get mondayToken() { return localStorage.getItem('lc_monday_token') || ''; },
+  get mondayToken() { return localStorage.getItem('lc_monday_token') || (SERVER_CFG && SERVER_CFG.hasMonday ? 'server' : ''); },
   set mondayToken(v) { localStorage.setItem('lc_monday_token', v); },
-  get aiKey() { return localStorage.getItem('lc_ai_key') || ''; },
+  get aiKey() { return localStorage.getItem('lc_ai_key') || (SERVER_CFG && SERVER_CFG.hasAI ? 'server' : ''); },
   set aiKey(v) { localStorage.setItem('lc_ai_key', v); },
-  get googleClientId() { return localStorage.getItem('lc_google_client_id') || DEFAULT_GOOGLE_CLIENT_ID; },
+  get googleClientId() { return localStorage.getItem('lc_google_client_id') || (SERVER_CFG && SERVER_CFG.googleClientId) || DEFAULT_GOOGLE_CLIENT_ID; },
   set googleClientId(v) { localStorage.setItem('lc_google_client_id', v); },
   // Gmail access token — persisted with expiry so a page reload does NOT log you out
   get gmailToken() {
@@ -641,6 +672,17 @@ function updateConnDots() {
 // ── MONDAY.COM API — direct GraphQL from browser ──────────────
 async function mondayQuery(query, variables) {
   if (!CONN.mondayToken) throw new Error('Monday.com not connected');
+  // Server-held token → proxy through the backend (token never touches the browser)
+  if (BACKEND_BASE && SERVER_CFG?.hasMonday && !localStorage.getItem('lc_monday_token')) {
+    const r = await fetch(BACKEND_BASE + '/monday', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-lc-auth': authCode() },
+      body: JSON.stringify({ query, variables: variables || {} }),
+    });
+    const d = await r.json();
+    if (d.errors) throw new Error(d.errors[0]?.message || 'Monday API error');
+    return d.data;
+  }
   const res = await fetch(MONDAY_CONFIG.apiUrl, {
     method: 'POST',
     headers: {
@@ -1013,6 +1055,15 @@ function addRiskFromEmail(email) {
 async function aiCall(prompt, system, maxTokens) {
   if (!CONN.aiKey) return null;
   try {
+    if (BACKEND_BASE && SERVER_CFG?.hasAI && !localStorage.getItem('lc_ai_key')) {
+      const r = await fetch(BACKEND_BASE + '/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-lc-auth': authCode() },
+        body: JSON.stringify({ max_tokens: maxTokens || 800, ...(system ? { system } : {}), messages: [{ role: 'user', content: prompt }] }),
+      });
+      const d = await r.json();
+      return d.content?.map(b => b.text || '').join('') || null;
+    }
     const res = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -1955,7 +2006,10 @@ function renderConnect(m) {
       <div style="flex:1;">
         <div style="font-family:var(--serif);font-size:15px;margin-bottom:3px;">Monday.com</div>
         <div style="font-size:11.5px;color:var(--t3);line-height:1.6;margin-bottom:10px;">Two-way board sync — compliance actions, certificates, candidates, onboarding. Uses your personal API token.</div>
-        ${CONN.mondayToken ?
+        ${SERVER_CFG?.hasMonday && !localStorage.getItem('lc_monday_token') ?
+          `<span class="pill gr">● Provided by your Azure backend</span>
+           <div style="margin-top:8px;"><button class="btn btn-sec btn-sm" onclick="syncAllBoards().then(()=>{scanCertRisks();render();toast('Synced ✓')})">⟳ Sync</button></div>` :
+         CONN.mondayToken ?
           `<span class="pill gr">● Connected</span>
            <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-sec btn-sm" onclick="syncAllBoards().then(()=>{scanCertRisks();render();toast('Synced ✓')})">⟳ Sync</button>
            <button class="btn btn-ghost btn-sm" onclick="setupMonday()">Change token</button></div>` :
@@ -1967,7 +2021,9 @@ function renderConnect(m) {
       <div style="flex:1;">
         <div style="font-family:var(--serif);font-size:15px;margin-bottom:3px;">AI engine</div>
         <div style="font-size:11.5px;color:var(--t3);line-height:1.6;margin-bottom:10px;">Claude powers deep triage, the morning brief, reply drafting, risk counsel and compliance analysis.</div>
-        ${CONN.aiKey ?
+        ${SERVER_CFG?.hasAI && !localStorage.getItem('lc_ai_key') ?
+          '<span class="pill gr">● Provided by your Azure backend</span>' :
+         CONN.aiKey ?
           `<span class="pill gr">● Active</span>
            <div style="margin-top:8px;"><button class="btn btn-ghost btn-sm" onclick="setupAI()">Change key</button></div>` :
           `<button class="btn btn-prim btn-sm" onclick="setupAI()">Set up →</button>`}
@@ -2063,6 +2119,45 @@ function saveAIKeyLC() {
   toast('AI engine active ✓');
 }
 
+// ── CROSS-DEVICE STATE SYNC (backend blob storage) ────────────
+let _statePushTimer = null;
+
+function syncStatePush() {
+  if (!BACKEND_BASE || !SERVER_CFG?.hasState) return;
+  clearTimeout(_statePushTimer);
+  _statePushTimer = setTimeout(async () => {
+    try {
+      const snapshot = { tasks: MY_TASKS, chat: CHAT.slice(-60), risks: RISK_REGISTER.slice(0, 100), drafts: DRAFTS.slice(0, 20), syncQueue: SYNC_QUEUE.slice(0, 40) };
+      await fetch(BACKEND_BASE + '/state', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'x-lc-auth': authCode() },
+        body: JSON.stringify(snapshot),
+      });
+      localStorage.setItem('lc_state_ts', new Date().toISOString());
+    } catch (e) {}
+  }, 4000);
+}
+
+async function syncStatePull() {
+  if (!BACKEND_BASE || !SERVER_CFG?.hasState) return;
+  try {
+    const r = await fetch(BACKEND_BASE + '/state', { headers: { 'x-lc-auth': authCode() } });
+    const d = await r.json();
+    if (!d.state?.updatedAt) return;
+    const localTs = localStorage.getItem('lc_state_ts') || '1970';
+    if (new Date(d.state.updatedAt) > new Date(localTs)) {
+      if (Array.isArray(d.state.tasks)) MY_TASKS = d.state.tasks;
+      if (Array.isArray(d.state.chat)) CHAT = d.state.chat;
+      if (Array.isArray(d.state.risks)) RISK_REGISTER = d.state.risks;
+      if (Array.isArray(d.state.drafts)) DRAFTS = d.state.drafts;
+      if (Array.isArray(d.state.syncQueue)) SYNC_QUEUE = d.state.syncQueue;
+      localStorage.setItem('lc_state_ts', d.state.updatedAt);
+      persistChat(); persist(); updateBadges(); render();
+      toast('Synced from your other device ✓');
+    }
+  } catch (e) {}
+}
+
 // ── DEVICE TRANSFER ───────────────────────────────────────────
 function exportSetup() {
   const payload = {
@@ -2134,6 +2229,7 @@ function persistChat() {
     localStorage.setItem('lc_chat', JSON.stringify(CHAT.slice(-60)));
     localStorage.setItem('lc_my_tasks', JSON.stringify(MY_TASKS));
   } catch (e) {}
+  if (typeof syncStatePush === 'function') syncStatePush();
 }
 
 const KB_COLS = [
@@ -2288,13 +2384,16 @@ async function runAgentLoop(userMsg) {
   let pendingMail = null;
 
   for (let hop = 0; hop < 6; hop++) {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const useBackend = BACKEND_BASE && SERVER_CFG?.hasAI && !localStorage.getItem('lc_ai_key');
+    const res = await fetch(useBackend ? (BACKEND_BASE + '/ai') : 'https://api.anthropic.com/v1/messages', {
       method: 'POST',
-      headers: {
+      headers: useBackend ? { 'Content-Type': 'application/json', 'x-lc-auth': authCode() } : {
         'Content-Type': 'application/json', 'x-api-key': CONN.aiKey,
         'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true',
       },
-      body: JSON.stringify({
+      body: JSON.stringify(useBackend ? {
+        max_tokens: 1600, system: buildAssistantSystem(), tools: AI_TOOLS, messages: apiMessages,
+      } : {
         model: AI_MODEL, max_tokens: 1600,
         system: buildAssistantSystem(), tools: AI_TOOLS, messages: apiMessages,
       }),
@@ -2864,8 +2963,15 @@ function renderIntel(m) {
 updateConnDots();
 updateBadges();
 render();
+// Boot order: backend probe → Gmail session → state pull
+async function bootSequence() {
+  const hasBackend = await probeBackend();
+  bootGmailSession();
+  if (hasBackend) { syncStatePull(); render(); }
+}
+
 // Restore the Gmail session on load — sign in once, stay signed in
-(function bootGmailSession() {
+function bootGmailSession() {
   if (CONN.gmailToken) {
     // Valid stored token — carry on, schedule its renewal
     scheduleGmailRefresh();
@@ -2877,7 +2983,8 @@ render();
       else { render(); } // re-render so the one-click Resume button appears
     });
   }
-})();
+}
+bootSequence();
 
 // Gentle auto-rescan every 5 minutes when connected
 setInterval(() => { if (CONN.gmailToken) gmailScan(15); }, 5 * 60 * 1000);
