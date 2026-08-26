@@ -282,6 +282,12 @@ main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
       Sync Queue
       <span class="nav-badge gold" id="badgeSync" style="display:none;">0</span>
     </button>
+    <div class="sb-label">Regulatory</div>
+    <button class="nav-btn" data-pg="regulatory" onclick="nav('regulatory')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3l8 4v5c0 5-3.5 9.4-8 10-4.5-.6-8-5-8-10V7l8-4z"/><path d="M9 12h6M9 15.5h6M9 8.5h6"/></svg>
+      Regulatory Map
+      <span class="nav-badge" id="badgeReg" style="display:none;">0</span>
+    </button>
     <div class="sb-label">Compliance</div>
     <button class="nav-btn" data-pg="compliance" onclick="nav('compliance')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l7 4v5c0 4.4-3 8.5-7 9.5-4-1-7-5.1-7-9.5V7l7-4z"/></svg>
@@ -547,6 +553,7 @@ function render() {
   else if (curPage === 'oversight') renderOversight(m);
   else if (curPage === 'intel') renderIntel(m);
   else if (curPage === 'pushqueue') renderSyncQueue(m);
+  else if (curPage === 'regulatory') renderRegulatory(m);
   else if (curPage === 'compliance') renderCompliance(m);
   else if (curPage === 'certs') renderCerts(m);
   else if (curPage === 'verify') renderVerify(m);
@@ -574,6 +581,7 @@ function updateBadges() {
   setB('badgeSync', SYNC_QUEUE.filter(s => s.status === 'pending').length);
   if (typeof MY_TASKS !== 'undefined') setB('badgeBoard', MY_TASKS.filter(t => t.col !== 'done').length);
   if (typeof computeOversight === 'function' && OVERSIGHT_CACHE.lastSync) { const ov = computeOversight(); setB('badgeOversight', ov.totals.overdue + ov.totals.stuck); }
+  if (typeof regOverall === 'function') setB('badgeReg', regOverall().legalGaps);
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2127,7 +2135,7 @@ function syncStatePush() {
   clearTimeout(_statePushTimer);
   _statePushTimer = setTimeout(async () => {
     try {
-      const snapshot = { tasks: MY_TASKS, chat: CHAT.slice(-60), risks: RISK_REGISTER.slice(0, 100), drafts: DRAFTS.slice(0, 20), syncQueue: SYNC_QUEUE.slice(0, 40) };
+      const snapshot = { tasks: MY_TASKS, chat: CHAT.slice(-60), risks: RISK_REGISTER.slice(0, 100), drafts: DRAFTS.slice(0, 20), syncQueue: SYNC_QUEUE.slice(0, 40), regChecks: REG_CHECKS, regHouse: REG_HOUSE };
       await fetch(BACKEND_BASE + '/state', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-lc-auth': authCode() },
@@ -2151,6 +2159,9 @@ async function syncStatePull() {
       if (Array.isArray(d.state.risks)) RISK_REGISTER = d.state.risks;
       if (Array.isArray(d.state.drafts)) DRAFTS = d.state.drafts;
       if (Array.isArray(d.state.syncQueue)) SYNC_QUEUE = d.state.syncQueue;
+      if (d.state.regChecks) { REG_CHECKS = d.state.regChecks; }
+      if (d.state.regHouse) { REG_HOUSE = d.state.regHouse; }
+      try { localStorage.setItem('lc_reg_checks', JSON.stringify(REG_CHECKS)); localStorage.setItem('lc_reg_house', JSON.stringify(REG_HOUSE)); } catch (e) {}
       localStorage.setItem('lc_state_ts', d.state.updatedAt);
       persistChat(); persist(); updateBadges(); render();
       toast('Synced from your other device ✓');
@@ -2258,6 +2269,7 @@ COMPLIANCE ACTIONS (Monday, ${comp.length} open): critical/high: ${comp.filter(i
 CERTIFICATES (${certs.length} tracked, ${certBad.length} at risk): ${certBad.slice(0, 12).map(c => `${c.group?.title || '?'}: ${c.certType || c.name} — ${c.renewal}${c.expiry ? ' exp ' + c.expiry : ''}`).join(' | ') || 'all current'}
 SYNC QUEUE: ${pendingSync.length} pending pushes to Monday
 ${typeof oversightSummaryLine === 'function' ? oversightSummaryLine() : ''}
+${typeof regulatorySummaryLine === 'function' ? regulatorySummaryLine() : ''}
 CONNECTIONS: Gmail ${CONN.gmailToken ? 'LIVE (' + (CONN.gmailEmail || '') + ')' : 'offline'} · Monday ${CONN.mondayToken ? 'LIVE' : 'offline'}`;
 }
 
@@ -2316,7 +2328,7 @@ const AI_TOOLS = [
     name: 'get_business_data',
     description: 'Pull detailed live data beyond the snapshot: full email list, all compliance items, every certificate, all tasks, risk register.',
     input_schema: { type: 'object', properties: {
-      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts', 'oversight'] },
+      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts', 'oversight', 'regulatory'] },
     }, required: ['area'] },
   },
 ];
@@ -2369,6 +2381,15 @@ async function executeAITool(name, input) {
       if (a === 'risks') return { ok: true, msg: JSON.stringify(RISK_REGISTER.filter(r => !r.resolved)) };
       if (a === 'drafts') return { ok: true, msg: JSON.stringify(DRAFTS.slice(0, 10).map(d => ({ to: d.to, subject: d.subject, status: d.status }))) };
       if (a === 'oversight') { const o = computeOversight(); return { ok: true, msg: JSON.stringify({ lastSync: OVERSIGHT_CACHE.lastSync, totals: o.totals, boards: o.boards.map(b => ({ name: b.name, score: b.score, open: b.open, exceptions: b.exceptions.slice(0, 12) })) }) }; }
+      if (a === 'regulatory') {
+        const gaps = {};
+        Object.entries(REG_FRAMEWORK).forEach(([k, dd]) => {
+          gaps[dd.label] = dd.perHouse
+            ? regAllItems(k).flatMap(it => HOMES.filter(h => REG_HOUSE[h + '_' + it.id] === 'miss' || REG_HOUSE[h + '_' + it.id] === 'due').map(h => h + ': ' + it.t + ' (' + REG_HOUSE[h + '_' + it.id] + ')'))
+            : regAllItems(k).filter(it => !REG_CHECKS[it.id]?.s).map(it => '[' + it.lvl + '] ' + it.t);
+        });
+        return { ok: true, msg: JSON.stringify({ overall: regOverall(), gaps }) };
+      }
       return { ok: false, msg: 'Unknown area' };
     }
     return { ok: false, msg: 'Unknown tool' };
@@ -2957,6 +2978,339 @@ function renderIntel(m) {
       </div>`;
     }).join('')}
   </div>` : `<div class="card"><div class="empt">Run the Oversight sweep first — this page draws from the same live data</div></div>`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REGULATORY MAP — the complete regulatory picture, tracked
+// CQC · PAMMS · House packs · Safer recruitment · Training · LAs
+// ═══════════════════════════════════════════════════════════════
+let REG_CHECKS = JSON.parse(localStorage.getItem('lc_reg_checks') || '{}');
+let REG_HOUSE = JSON.parse(localStorage.getItem('lc_reg_house') || '{}');
+function persistReg() {
+  try {
+    localStorage.setItem('lc_reg_checks', JSON.stringify(REG_CHECKS));
+    localStorage.setItem('lc_reg_house', JSON.stringify(REG_HOUSE));
+  } catch (e) {}
+  if (typeof syncStatePush === 'function') syncStatePush();
+}
+
+// lvl: 'legal' = the law / registration requirement · 'good' = expected at Good · 'out' = Outstanding marker
+const REG_FRAMEWORK = {
+  cqc: { label: 'CQC — Fundamental Standards', icon: '🛡', groups: [
+    { name: 'Registration & statutory duties', items: [
+      { id: 'cqc_reg1', t: 'CQC registration certificate current for all locations and regulated activities', d: 'Certificate displayed; conditions checked against actual delivery; new locations registered BEFORE first placement', f: 'On change', lvl: 'legal' },
+      { id: 'cqc_reg2', t: 'Registered Manager in post at every location', d: 'Reg 5-7 Registration Regs. Absence of 28+ days must be notified; RM vacancy over 6 months invites enforcement', f: 'Continuous', lvl: 'legal' },
+      { id: 'cqc_reg3', t: 'Statement of Purpose current and filed with CQC', d: 'Reg 12 Registration Regs — must reflect actual services, locations, service-user bands; re-file within 28 days of change', f: 'On change', lvl: 'legal' },
+      { id: 'cqc_reg4', t: 'Ratings displayed (Reg 20A) at premises and on website', d: 'Most recent rating conspicuously displayed at every location and any website', f: 'On change', lvl: 'legal' },
+      { id: 'cqc_reg5', t: 'Provider Information Return (PIR) submitted on time', d: 'Late or thin PIR reads as poor governance; keep a rolling evidence file so the PIR writes itself', f: 'Annual', lvl: 'legal' },
+      { id: 'cqc_reg6', t: 'Statutory notifications submitted without fail', d: 'Deaths (Reg 16), serious injury/abuse allegation/police involvement/DoLS outcome (Reg 18), other events. Zero-tolerance area — audit monthly that every notifiable event was actually notified', f: 'Per event + monthly audit', lvl: 'legal' },
+      { id: 'cqc_reg7', t: 'Duty of Candour process (Reg 20) with evidence of use', d: 'Written notification, apology, findings shared for every notifiable safety incident; log kept with dates', f: 'Per event', lvl: 'legal' },
+      { id: 'cqc_reg8', t: 'Fit and Proper Persons evidence for every director (Reg 5)', d: 'DBS, references, qualification and character evidence for board-level people, reviewed annually', f: 'Annual', lvl: 'legal' },
+    ]},
+    { name: 'The Fundamental Standards (Regs 9–19)', items: [
+      { id: 'cqc_r9',  t: 'Reg 9 — Person-centred care: current, co-produced care plans', d: 'Assessment before service starts; plans reviewed monthly and after any change; evidence of the person’s voice in the plan itself', f: 'Monthly review', lvl: 'legal' },
+      { id: 'cqc_r10', t: 'Reg 10 — Dignity and respect embedded and observable', d: 'Privacy practice, respectful language in notes (audit a sample monthly), independence promoted', f: 'Monthly note audit', lvl: 'legal' },
+      { id: 'cqc_r11', t: 'Reg 11 — Consent: MCA assessments and best-interests decisions recorded', d: 'Capacity assumed unless assessed otherwise; decision-specific MCAs; best-interests process documented with family/advocate involvement', f: 'Per decision', lvl: 'legal' },
+      { id: 'cqc_r12', t: 'Reg 12 — Safe care: risk assessments live and acted on', d: 'Individual + environmental risk assessments; medicines managed safely; equipment serviced; lessons from incidents fed back', f: 'Monthly', lvl: 'legal' },
+      { id: 'cqc_r13', t: 'Reg 13 — Safeguarding: policy, training, referrals made properly', d: 'Staff can describe types of abuse and how to refer; log shows referrals to the LA made without delay and CQC notified', f: 'Continuous', lvl: 'legal' },
+      { id: 'cqc_r14', t: 'Reg 14 — Nutrition and hydration needs met', d: 'Dietary needs/preferences in plans; dysphagia (IDDSI) guidance followed where present; weight monitored where indicated', f: 'Monthly', lvl: 'legal' },
+      { id: 'cqc_r15', t: 'Reg 15 — Premises and equipment safe, clean, suitable', d: 'Feeds from the house compliance pack — certificates, servicing, cleanliness audits', f: 'Per pack', lvl: 'legal' },
+      { id: 'cqc_r16', t: 'Reg 16 — Complaints received, investigated, acted on', d: 'Accessible complaints route (easy-read); investigation records; you can show what changed as a result', f: 'Per complaint', lvl: 'legal' },
+      { id: 'cqc_r17', t: 'Reg 17 — Good governance: the audit programme actually runs', d: 'Scheduled audits (medication, care plans, infection control, finances, H&S) with actions tracked to closure; board oversight minutes', f: 'Monthly cycle', lvl: 'legal' },
+      { id: 'cqc_r18', t: 'Reg 18 — Staffing: enough, trained, supervised, appraised', d: 'Rotas match assessed hours; training matrix compliant; supervision 6-8 weekly; annual appraisal', f: 'Continuous', lvl: 'legal' },
+      { id: 'cqc_r19', t: 'Reg 19 — Fit and proper staff: full Schedule 3 file for every worker', d: 'Feeds from the safer recruitment checklist — every file complete BEFORE day one', f: 'Per hire', lvl: 'legal' },
+    ]},
+    { name: 'Outstanding markers (Single Assessment Framework)', items: [
+      { id: 'cqc_o1', t: 'SAFE — Learning culture you can evidence', d: 'Incident themes analysed quarterly; changes made and re-audited; staff describe speaking up freely; near-misses reported not hidden', f: 'Quarterly', lvl: 'out' },
+      { id: 'cqc_o2', t: 'EFFECTIVE — Outcomes measured and improving', d: 'Goal attainment tracked per person (skills gained, community access, health outcomes); hospital admissions avoided logged as wins', f: 'Quarterly', lvl: 'out' },
+      { id: 'cqc_o3', t: 'CARING — Co-production beyond consultation', d: 'People supported involved in recruitment interviews, menu/activity planning, staff training delivery; evidence in minutes and photos', f: 'Continuous', lvl: 'out' },
+      { id: 'cqc_o4', t: 'RESPONSIVE — Support that visibly changed when needs changed', d: 'Worked examples: plan changed within days of new need; communication passports; tech used creatively', f: 'Per person', lvl: 'out' },
+      { id: 'cqc_o5', t: 'WELL-LED — A quality narrative the data backs up', d: 'A living quality account: what we found, what we changed, what improved — with numbers. This is the Outstanding spine', f: 'Quarterly', lvl: 'out' },
+      { id: 'cqc_o6', t: 'External validation sought and used', d: 'Peer review, LA quality visits, Skills for Care benchmarking, satisfaction surveys with published you-said-we-did', f: 'Annual', lvl: 'out' },
+    ]},
+  ]},
+
+  house: { label: 'House compliance pack', icon: '🏠', perHouse: true, groups: [
+    { name: 'Safety certificates', items: [
+      { id: 'h_gas',  t: 'Gas Safety (CP12)', d: 'Gas Safe engineer; copy to tenants within 28 days', f: 'Annual', lvl: 'legal' },
+      { id: 'h_eicr', t: 'EICR — electrical installation', d: 'Satisfactory outcome; C1/C2 remedials done with evidence', f: '5-yearly', lvl: 'legal' },
+      { id: 'h_pat',  t: 'PAT testing — portable appliances', d: 'All provider-supplied appliances labelled', f: 'Annual', lvl: 'good' },
+      { id: 'h_leg',  t: 'Legionella risk assessment + monitoring', d: 'ACOP L8; monthly temperature checks logged; little-used outlets flushed', f: '2-yearly RA · monthly checks', lvl: 'legal' },
+      { id: 'h_lift', t: 'LOLER — hoists / lifting equipment (where present)', d: 'Thorough examination', f: '6-monthly', lvl: 'legal' },
+    ]},
+    { name: 'Fire safety', items: [
+      { id: 'h_fra',   t: 'Fire Risk Assessment (RRO 2005)', d: 'Suitable and sufficient; actions closed with dates; review after any change or incident', f: 'Annual review', lvl: 'legal' },
+      { id: 'h_alarm', t: 'Fire alarm — weekly test + annual service', d: 'Weekly call-point test logged; BS 5839 service certificate', f: 'Weekly + annual', lvl: 'legal' },
+      { id: 'h_eml',   t: 'Emergency lighting — monthly flick + annual service', d: 'BS 5266; logs kept in the fire folder', f: 'Monthly + annual', lvl: 'legal' },
+      { id: 'h_ext',   t: 'Extinguishers serviced', d: 'Annual service tags in date', f: 'Annual', lvl: 'legal' },
+      { id: 'h_drill', t: 'Fire drills — all shifts covered, PEEPs current', d: 'At least yearly per person incl. nights; evacuation times recorded; a PEEP for every resident', f: 'Yearly minimum', lvl: 'legal' },
+    ]},
+    { name: 'Property, tenancy & insurance', items: [
+      { id: 'h_ten',  t: 'Tenancy agreement signed for every resident', d: 'Genuine tenancy (housing costs separated from care); easy-read version offered', f: 'Per resident', lvl: 'legal' },
+      { id: 'h_sla',  t: 'Landlord/RP agreement in place (SLA or lease)', d: 'Repairs, certificates and duty-holder split written down — Trinity homes especially', f: 'On change', lvl: 'legal' },
+      { id: 'h_ins',  t: 'Buildings + contents insurance current', d: 'Certificate on file; care use declared', f: 'Annual', lvl: 'legal' },
+      { id: 'h_epc',  t: 'EPC rating E or above', d: 'MEES compliance for let property', f: '10-yearly', lvl: 'legal' },
+      { id: 'h_hmo',  t: 'HMO licence where required', d: 'Check local designation — 5+ persons, 2+ households triggers mandatory licensing; some areas additional/selective', f: '5-yearly', lvl: 'legal' },
+    ]},
+    { name: 'Operational file (at the house)', items: [
+      { id: 'h_hsfile', t: 'H&S file: COSHH, first aid kit, accident book, water temps', d: 'COSHH inventory + data sheets; monthly water temperature log; first aid stocked and checked', f: 'Monthly', lvl: 'legal' },
+      { id: 'h_env',    t: 'Environmental risk assessment for the property', d: 'Windows (restrictors where assessed), hot surfaces, TMVs on baths, garden, ligature review where relevant', f: 'Annual', lvl: 'good' },
+      { id: 'h_bcp',    t: 'Business continuity plan — house level', d: 'Loss of utilities, staffing failure, evacuation destination; staff know where it is', f: 'Annual', lvl: 'good' },
+      { id: 'h_visits', t: 'Manager walkthrough / quality visit log', d: 'Monthly documented visit with actions; ties to Management Walkthroughs board', f: 'Monthly', lvl: 'out' },
+    ]},
+  ]},
+
+  staff: { label: 'Safer recruitment — before day one', icon: '📋', groups: [
+    { name: 'Schedule 3 file (Reg 19) — every item before the first shift', items: [
+      { id: 's_dbs',  t: 'Enhanced DBS with Adults’ Barred List check', d: 'Obtained BEFORE start; renewed 3-yearly per LH policy; Update Service status recorded if used', f: 'Pre-start + 3-yearly', lvl: 'legal' },
+      { id: 's_id',   t: 'Identity verified — photo ID + proof of address', d: 'Documents copied, certified and dated by the verifier', f: 'Pre-start', lvl: 'legal' },
+      { id: 's_rtw',  t: 'Right to work check', d: 'Home Office compliant (share code or manual); sponsor duties met for sponsored workers', f: 'Pre-start', lvl: 'legal' },
+      { id: 's_refs', t: 'Two references, one from most recent employer', d: 'Verified (phoned where any doubt); care roles: reason for leaving asked', f: 'Pre-start', lvl: 'legal' },
+      { id: 's_hist', t: 'Full employment history with every gap explored', d: 'Application form (not CV alone); gaps questioned at interview and the answer recorded', f: 'Pre-start', lvl: 'legal' },
+      { id: 's_qual', t: 'Qualifications verified (certificates seen)', d: 'Copies on file; professional registration checked where claimed', f: 'Pre-start', lvl: 'legal' },
+      { id: 's_health', t: 'Health declaration + adjustments considered', d: 'Fitness for role; reasonable adjustments documented', f: 'Pre-start', lvl: 'legal' },
+      { id: 's_int',  t: 'Interview record with safeguarding-focused questions', d: 'Scored record kept; values-based questions; person-supported involvement scores Outstanding', f: 'Pre-start', lvl: 'legal' },
+      { id: 's_con',  t: 'Contract + signed job description before day one', d: 'Signed and filed; DBS-portability and renewal clauses included', f: 'Pre-start', lvl: 'legal' },
+      { id: 's_photo', t: 'ID badge photo + next-of-kin + bank verified', d: 'Payroll fraud check: bank account name matches employee', f: 'Pre-start', lvl: 'good' },
+    ]},
+    { name: 'Induction (first 12 weeks)', items: [
+      { id: 's_cind', t: 'Care Certificate started within 2 weeks, done in 12', d: 'All 15 standards assessed in practice, not just workbooks', f: '12 weeks', lvl: 'good' },
+      { id: 's_shad', t: 'Shadow shifts before lone working — signed off', d: 'Minimum shadowing per house; lone-working competency sign-off recorded', f: 'Pre-lone-working', lvl: 'legal' },
+      { id: 's_pol',  t: 'Policy sign-sheet: safeguarding, whistleblowing, medication, code of conduct', d: 'Signature list per starter', f: 'Week 1', lvl: 'good' },
+      { id: 's_prob', t: 'Probation reviews at 6 and 12 weeks with outcome letter', d: 'Documented; concerns acted on early', f: '12 weeks', lvl: 'good' },
+    ]},
+  ]},
+
+  training: { label: 'Mandatory training & competency', icon: '🎓', groups: [
+    { name: 'Statutory core — every worker (Skills for Care aligned)', items: [
+      { id: 't_hs',   t: 'Health & safety awareness', d: 'Refresher 3-yearly', f: '3-yearly', lvl: 'legal' },
+      { id: 't_fire', t: 'Fire safety training + yearly drill participation', d: '3-yearly course; drill at least yearly incl. night staff', f: '3-yearly + drills', lvl: 'legal' },
+      { id: 't_mh',   t: 'Moving & handling (objects; people where role requires + practical competency)', d: '3-yearly; practical sign-off for assisting people', f: '3-yearly', lvl: 'legal' },
+      { id: 't_ipc',  t: 'Infection prevention & control', d: '3-yearly', f: '3-yearly', lvl: 'legal' },
+      { id: 't_sga',  t: 'Safeguarding adults', d: '3-yearly; managers to L3', f: '3-yearly', lvl: 'legal' },
+      { id: 't_bls',  t: 'Basic life support ANNUAL + first aid 3-yearly', d: 'BLS is annual — the most commonly missed cycle', f: 'Annual (BLS)', lvl: 'legal' },
+      { id: 't_om',   t: 'Oliver McGowan LD & autism training (Health & Care Act 2022)', d: 'Statutory duty; correct tier per role; refreshed per Code of Practice', f: '3-yearly', lvl: 'legal' },
+      { id: 't_med',  t: 'Medication administration + ANNUAL competency sign-off', d: 'Annual observed competency; re-assessed after any error or policy change', f: 'Annual', lvl: 'legal' },
+      { id: 't_food', t: 'Food hygiene (role-dependent)', d: 'Level 2 for food handlers', f: '3-yearly', lvl: 'legal' },
+      { id: 't_mca',  t: 'MCA & DoLS working knowledge', d: 'All support staff; evidenced in practice at inspection', f: '3-yearly', lvl: 'good' },
+    ]},
+    { name: 'Person-specific & specialist', items: [
+      { id: 't_buccal', t: 'Buccal midazolam — only trained staff on rota where prescribed', d: 'Per-person protocol; rota check that a trained person is ALWAYS on shift', f: 'Annual', lvl: 'legal' },
+      { id: 't_dys',   t: 'Dysphagia/IDDSI where assessed', d: 'SALT guidance training before supporting meals', f: 'Per need', lvl: 'legal' },
+      { id: 't_pbs',   t: 'PBS for staff supporting behaviours of concern', d: 'Restraint-reduction commitment; physical intervention certified where used', f: 'Annual', lvl: 'good' },
+      { id: 't_epi',   t: 'Epilepsy awareness where relevant', d: 'Per-person care plan alignment', f: 'Per need', lvl: 'good' },
+    ]},
+    { name: 'The system around it', items: [
+      { id: 't_matrix', t: 'Training matrix live, RAG-rated, reviewed monthly', d: 'Ties to Staff Training board; 60-day-forward renewals chased. Current position: 61% compliant — path to 100% tracked', f: 'Monthly', lvl: 'legal' },
+      { id: 't_sup',   t: 'Supervision 6–8 weekly + annual appraisal for all', d: 'Ties to Appraisals & Supervision board', f: '6-8 weekly', lvl: 'good' },
+      { id: 't_trig',  t: 'Trigger-based refreshers: incident, error, new need brings training forward', d: 'Matrix records the trigger, not just the interval — an Outstanding marker', f: 'Per trigger', lvl: 'out' },
+    ]},
+  ]},
+
+  pamms: { label: 'PAMMS — LA quality assessment', icon: '📐', groups: [
+    { name: 'What Bucks & Oxon assessors score (prepare evidence per domain)', items: [
+      { id: 'p_d1', t: 'Involvement & Information', d: 'People understand their care; accessible formats (easy-read tenancy, plans, complaints); advocacy offered; evidence of information given BEFORE decisions', f: 'Assessment-ready', lvl: 'good' },
+      { id: 'p_d2', t: 'Personalised Care, Treatment & Support', d: 'Plans reflect the person not the service; outcomes recorded; reviews on time; health appointments supported and followed up', f: 'Assessment-ready', lvl: 'good' },
+      { id: 'p_d3', t: 'Safeguarding & Safety', d: 'Referral log matches LA records; risk assessments current; medication audits clean; finances of people supported audited monthly with receipts', f: 'Assessment-ready', lvl: 'good' },
+      { id: 'p_d4', t: 'Suitability of Staffing', d: 'Files pass the Schedule 3 test; training matrix compliant; supervision on cycle; safe rota levels vs commissioned hours', f: 'Assessment-ready', lvl: 'good' },
+      { id: 'p_d5', t: 'Quality & Management (Leadership)', d: 'Audit cycle with closed actions; complaints learning; business continuity; insurance schedule; policy review dates current', f: 'Assessment-ready', lvl: 'good' },
+    ]},
+    { name: 'PAMMS logistics', items: [
+      { id: 'p_self', t: 'Self-assessment maintained so any request is a same-week return', d: 'Keep the PAMMS self-assessment live, not written under deadline', f: 'Quarterly refresh', lvl: 'out' },
+      { id: 'p_gaps', t: 'Last PAMMS actions closed with evidence', d: 'Known gaps from the last review (staff file completeness, PRN GP signature, audit programme) closed and evidenced', f: 'Until closed', lvl: 'legal' },
+      { id: 'p_room', t: 'Evidence room ready: one folder per domain', d: 'Digital folder per PAMMS domain so an assessor day needs zero scrambling', f: 'Standing', lvl: 'out' },
+    ]},
+  ]},
+
+  la: { label: 'Buckinghamshire & Oxfordshire duties', icon: '🏛', groups: [
+    { name: 'Contract & commissioner obligations', items: [
+      { id: 'la_con',  t: 'Contract quality schedules mapped — every reporting duty diarised', d: 'Each contract’s KPIs, returns and meeting cadence in the calendar with owners', f: 'Per contract', lvl: 'legal' },
+      { id: 'la_inc',  t: 'Commissioner incident reporting alongside CQC/safeguarding', d: 'Serious incidents reported to the funding LA per contract timescale — separate from CQC notification', f: 'Per event', lvl: 'legal' },
+      { id: 'la_ins',  t: 'Insurance at contract levels (typically £10m employer, £5m+ public liability)', d: 'Certificates current and filed with both councils', f: 'Annual', lvl: 'legal' },
+      { id: 'la_rate', t: 'Fee/uplift correspondence filed; open-book requests answerable', d: 'Cost of care transparency; NLW uplift evidence', f: 'Annual', lvl: 'good' },
+      { id: 'la_brok', t: 'Brokerage/void returns submitted on time', d: 'Vacancy reporting keeps referrals flowing', f: 'Per cadence', lvl: 'good' },
+    ]},
+    { name: 'Local safeguarding & system relationships', items: [
+      { id: 'la_ssab', t: 'Referral routes for both Safeguarding Adults Boards known and used', d: 'Bucks SAB and Oxfordshire SAB thresholds/portals in the safeguarding policy; staff know which LA funds each person', f: 'Standing', lvl: 'legal' },
+      { id: 'la_ldnh', t: 'LeDeR notification path for LD deaths', d: 'Every death of a person with LD notified to LeDeR in addition to CQC', f: 'Per event', lvl: 'legal' },
+      { id: 'la_qm',   t: 'Standing quality relationship with both councils', d: 'Named quality officer contact; attend provider forums; share good news not just problems', f: 'Quarterly', lvl: 'out' },
+      { id: 'la_hb',   t: 'Housing Benefit/exempt accommodation evidence pack per home', d: 'Intensive housing management schedule, landlord status evidence — ties to HB & SMI Claims board', f: 'Per home', lvl: 'legal' },
+    ]},
+  ]},
+};
+
+const REG_LEVEL_META = {
+  legal: { label: 'LEGAL', cls: 'rd', desc: 'Required by law or registration' },
+  good:  { label: 'GOOD',  cls: 'bl', desc: 'Expected at Good' },
+  out:   { label: 'OUTSTANDING', cls: 'au', desc: 'Outstanding marker' },
+};
+
+function regAllItems(domainKey) {
+  const d = REG_FRAMEWORK[domainKey];
+  return d.groups.flatMap(g => g.items);
+}
+
+function regProgress(domainKey) {
+  if (REG_FRAMEWORK[domainKey].perHouse) {
+    const items = regAllItems(domainKey);
+    const cells = items.length * HOMES.length;
+    let ok = 0, bad = 0;
+    items.forEach(it => HOMES.forEach(h => {
+      const s = REG_HOUSE[h + '_' + it.id];
+      if (s === 'ok' || s === 'na') ok++;
+      if (s === 'miss') bad++;
+    }));
+    return { done: ok, total: cells, pct: Math.round(ok / cells * 100), bad };
+  }
+  const items = regAllItems(domainKey);
+  const done = items.filter(it => REG_CHECKS[it.id]?.s === 'done' || REG_CHECKS[it.id]?.s === 'na').length;
+  return { done, total: items.length, pct: Math.round(done / items.length * 100), bad: 0 };
+}
+
+function regOverall() {
+  const keys = Object.keys(REG_FRAMEWORK);
+  let done = 0, total = 0, outDone = 0, outTotal = 0, legalGaps = 0;
+  keys.forEach(k => {
+    const p = regProgress(k);
+    done += p.done; total += p.total;
+    regAllItems(k).forEach(it => {
+      if (it.lvl === 'out') { outTotal++; if (REG_CHECKS[it.id]?.s === 'done') outDone++; }
+      if (it.lvl === 'legal' && !REG_FRAMEWORK[k].perHouse && !(REG_CHECKS[it.id]?.s)) legalGaps++;
+    });
+  });
+  return { pct: Math.round(done / total * 100), outPct: outTotal ? Math.round(outDone / outTotal * 100) : 0, legalGaps };
+}
+
+function toggleRegItem(id) {
+  const cur = REG_CHECKS[id]?.s;
+  if (!cur) REG_CHECKS[id] = { s: 'done', dt: new Date().toISOString().slice(0, 10) };
+  else if (cur === 'done') REG_CHECKS[id] = { s: 'na', dt: new Date().toISOString().slice(0, 10) };
+  else delete REG_CHECKS[id];
+  persistReg(); updateBadges(); render();
+}
+
+function cycleHouseCell(home, itemId) {
+  const key = home + '_' + itemId;
+  const order = [undefined, 'ok', 'due', 'miss', 'na'];
+  const cur = REG_HOUSE[key];
+  const next = order[(order.indexOf(cur) + 1) % order.length];
+  if (next === undefined) delete REG_HOUSE[key]; else REG_HOUSE[key] = next;
+  persistReg(); updateBadges(); render();
+}
+
+function regulatorySummaryLine() {
+  const o = regOverall();
+  const gaps = [];
+  Object.entries(REG_FRAMEWORK).forEach(([k, d]) => {
+    if (d.perHouse) return;
+    regAllItems(k).forEach(it => { if (it.lvl === 'legal' && !REG_CHECKS[it.id]?.s) gaps.push(it.t); });
+  });
+  const houseMiss = [];
+  regAllItems('house').forEach(it => HOMES.forEach(h => { if (REG_HOUSE[h + '_' + it.id] === 'miss') houseMiss.push(h + ': ' + it.t); }));
+  return `REGULATORY MAP: ${o.pct}% tracked complete · Outstanding readiness ${o.outPct}% · ${o.legalGaps} LEGAL-level items unconfirmed. Top legal gaps: ${gaps.slice(0, 8).join(' | ') || 'none'}. House pack MISSING: ${houseMiss.slice(0, 8).join(' | ') || 'none flagged'}`;
+}
+
+function copyRegReport() {
+  const o = regOverall();
+  let md = `# Living Horizon — Regulatory Position\n${new Date().toLocaleDateString('en-GB')}\n\nOverall tracked: ${o.pct}% · Outstanding readiness: ${o.outPct}% · Legal items unconfirmed: ${o.legalGaps}\n`;
+  Object.entries(REG_FRAMEWORK).forEach(([k, d]) => {
+    const p = regProgress(k);
+    md += `\n## ${d.label} — ${p.pct}%\n`;
+    d.groups.forEach(g => {
+      md += `\n### ${g.name}\n`;
+      g.items.forEach(it => {
+        if (d.perHouse) {
+          const states = HOMES.map(h => `${h}:${REG_HOUSE[h + '_' + it.id] || '—'}`).join(' ');
+          md += `- ${it.t} · ${states}\n`;
+        } else {
+          const c = REG_CHECKS[it.id];
+          md += `- [${c?.s === 'done' ? 'x' : c?.s === 'na' ? '~' : ' '}] ${it.t}${c?.dt ? ' (' + c.dt + ')' : ''}\n`;
+        }
+      });
+    });
+  });
+  navigator.clipboard?.writeText(md).then(() => toast('Regulatory report copied — paste anywhere ✓'));
+}
+
+// ═══ RENDER ═══
+function renderRegulatory(m) {
+  const domain = curState.dom || 'cqc';
+  const filter = curState.lvl || 'all';
+  const d = REG_FRAMEWORK[domain];
+  const o = regOverall();
+
+  m.innerHTML = bc('Regulatory', 'Regulatory <em>Map</em>', 'Every requirement — CQC, PAMMS, houses, people — tracked in one place. Target: Outstanding.') +
+  `<div class="grid-4 mb-4">
+    <div class="kpi ${o.legalGaps ? 'rd' : 'gr'}"><div class="kpi-label">Legal items unconfirmed</div><div class="kpi-val">${o.legalGaps}</div><div class="kpi-note">must reach zero</div></div>
+    <div class="kpi au"><div class="kpi-label">Outstanding readiness</div><div class="kpi-val">${o.outPct}%</div><div class="kpi-note">markers evidenced</div></div>
+    <div class="kpi bl"><div class="kpi-label">Overall tracked</div><div class="kpi-val">${o.pct}%</div></div>
+    <div class="kpi gr" style="cursor:pointer;" onclick="copyRegReport()"><div class="kpi-label">Board report</div><div class="kpi-val" style="font-size:19px;padding-top:6px;">📄 Copy</div><div class="kpi-note">one-click markdown</div></div>
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;">
+    ${Object.entries(REG_FRAMEWORK).map(([k, dd]) => {
+      const p = regProgress(k);
+      return `<button class="btn btn-sm ${domain===k?'btn-prim':'btn-sec'}" onclick="nav('regulatory',{dom:'${k}',lvl:'${filter}'})">${dd.icon} ${dd.label.split(' — ')[0]} <span style="opacity:0.65;font-size:10px;">${p.pct}%</span></button>`;
+    }).join('')}
+  </div>
+  <div style="display:flex;gap:6px;margin-bottom:16px;align-items:center;">
+    ${['all','legal','good','out'].map(l => `<button class="btn btn-sm ${filter===l?'btn-prim':'btn-ghost'}" onclick="nav('regulatory',{dom:'${domain}',lvl:'${l}'})">${l==='all'?'Everything':l==='legal'?'⚖ Legal only':l==='good'?'Good':'✦ Outstanding markers'}</button>`).join('')}
+    <div style="flex:1;"></div>
+    ${CONN.aiKey ? `<button class="btn btn-sec btn-sm" onclick="askDock('Run a regulatory gap analysis: what is unconfirmed at legal level, which house pack items are missing, and what is the fastest route to Outstanding readiness?')">✦ Gap counsel</button>` : ''}
+  </div>` +
+  (d.perHouse ? renderHouseMatrix(d, filter) : renderRegChecklist(d, filter));
+}
+
+function renderRegChecklist(d, filter) {
+  return d.groups.map(g => {
+    const items = g.items.filter(it => filter === 'all' || it.lvl === filter);
+    if (!items.length) return '';
+    return `<div class="card mb-3">
+      <div class="card-h"><div class="card-t" style="font-size:13.5px;">${esc(g.name)}</div>
+        <div class="card-sub">${items.filter(it => REG_CHECKS[it.id]?.s).length}/${items.length}</div></div>
+      ${items.map(it => {
+        const c = REG_CHECKS[it.id];
+        const lv = REG_LEVEL_META[it.lvl];
+        return `<div style="padding:11px 18px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;${c?.s ? 'opacity:0.75;' : ''}">
+          <div onclick="toggleRegItem('${it.id}')" style="width:21px;height:21px;border-radius:6px;border:2px solid ${c?.s === 'done' ? 'var(--grn)' : c?.s === 'na' ? 'var(--t4)' : 'var(--line2)'};background:${c?.s === 'done' ? 'var(--grn)' : c?.s === 'na' ? 'var(--t4)' : 'white'};cursor:pointer;display:flex;align-items:center;justify-content:center;color:white;font-size:12px;flex-shrink:0;margin-top:1px;" title="Click: done → n/a → clear">${c?.s === 'done' ? '✓' : c?.s === 'na' ? '–' : ''}</div>
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;${c?.s === 'done' ? '' : ''}">${esc(it.t)}</div>
+            <div style="font-size:11px;color:var(--t3);margin-top:2px;line-height:1.6;">${esc(it.d)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end;flex-shrink:0;">
+            <span class="pill ${lv.cls}" title="${lv.desc}">${lv.label}</span>
+            <span style="font-size:9.5px;color:var(--t4);">${esc(it.f)}</span>
+            ${c?.dt ? `<span style="font-size:9.5px;color:var(--grn);font-weight:600;">${c.s === 'na' ? 'n/a' : '✓'} ${c.dt}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+function renderHouseMatrix(d, filter) {
+  const stateMeta = { ok: ['✓', 'var(--grn)'], due: ['◐', 'var(--amb)'], miss: ['✕', 'var(--red)'], na: ['–', '#B8BCC6'] };
+  return `<div class="card" style="overflow-x:auto;">
+    <div class="card-h"><div class="card-t" style="font-size:13.5px;">Every home · every document</div>
+      <div class="card-sub">click a cell: ✓ held → ◐ due soon → ✕ missing → – n/a → clear</div></div>
+    <table class="tbl" style="min-width:860px;">
+      <tr><th style="min-width:230px;">Document</th>${HOMES.map(h => `<th style="text-align:center;">${h}</th>`).join('')}</tr>
+      ${d.groups.map(g => {
+        const items = g.items.filter(it => filter === 'all' || it.lvl === filter);
+        if (!items.length) return '';
+        return `<tr><td colspan="${HOMES.length + 1}" style="background:var(--paper);font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);padding:7px 14px;">${esc(g.name)}</td></tr>` +
+        items.map(it => `<tr>
+          <td><div style="font-weight:600;font-size:12px;">${esc(it.t)} <span class="pill ${REG_LEVEL_META[it.lvl].cls}" style="font-size:8px;margin-left:4px;">${REG_LEVEL_META[it.lvl].label}</span></div>
+            <div style="font-size:10px;color:var(--t4);">${esc(it.f)}</div></td>
+          ${HOMES.map(h => {
+            const s = REG_HOUSE[h + '_' + it.id];
+            const [sym, col] = stateMeta[s] || ['', 'transparent'];
+            return `<td style="text-align:center;"><div onclick="cycleHouseCell('${h}','${it.id}')" style="width:27px;height:27px;border-radius:7px;border:1.5px solid ${s ? col : 'var(--line2)'};background:${s ? col + '22' : 'white'};color:${col};font-weight:800;font-size:13px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;">${sym}</div></td>`;
+          }).join('')}
+        </tr>`).join('');
+      }).join('')}
+    </table>
+  </div>
+  <div style="font-size:11px;color:var(--t3);margin-top:10px;">Tip — the Safety Certificates rows mirror your Brunel — Safety Certificates board: run the Oversight sweep and cross-check the two until they agree, then this matrix becomes your inspection-day answer sheet.</div>`;
 }
 
 // ── BOOT ──────────────────────────────────────────────────────
