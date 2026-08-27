@@ -4343,10 +4343,13 @@ function renderAuditLanding(m, fw, lib, fwAudits) {
     ${lib.tpl.length > 1 ? `<div style="font-family:var(--serif);font-size:16px;margin:18px 0 9px;">${d.domain}</div>` : ''}
     ${d.sections.map(s => `<div class="card mb-3">
       <div class="card-h"><div class="card-t" style="font-size:13px;">${esc(s.name)}</div><div class="card-sub">${s.stds.length} standards</div></div>
-      ${s.stds.map(st => `<div style="padding:9px 16px;border-top:1px solid var(--line);display:flex;gap:10px;">
-        <span class="mono" style="font-size:10.5px;font-weight:700;color:var(--gold);min-width:34px;">${st.c}</span>
-        <div style="font-size:12px;line-height:1.6;color:var(--t2);">${esc(st.t)}</div>
-      </div>`).join('')}
+      ${s.stds.map(st => { const lens = assessorLens(fw, st); return `<div style="padding:9px 16px;border-top:1px solid var(--line);">
+        <div style="display:flex;gap:10px;">
+          <span class="mono" style="font-size:10.5px;font-weight:700;color:var(--gold);min-width:34px;">${st.c}</span>
+          <div style="flex:1;font-size:12px;line-height:1.6;color:var(--t2);">${esc(st.t)}</div>
+        </div>
+        ${lens ? `<details><summary style="cursor:pointer;font-size:10px;font-weight:700;color:var(--gold);margin:5px 0 0 44px;list-style:none;">📖 Assessor’s lens — what they look for & strong evidence</summary>${lens}</details>` : ''}
+      </div>`; }).join('')}
     </div>`).join('')}`).join('')}`;
 }
 
@@ -4394,10 +4397,160 @@ function renderAuditRun(m, fw, lib, fwAudits, audit) {
               </div>
             </div>
             ${r.note ? `<div style="margin:7px 0 0 44px;font-size:11px;color:var(--t3);background:var(--paper);border-left:2.5px solid var(--gold);padding:6px 10px;border-radius:0 6px 6px 0;line-height:1.6;"><strong style="color:var(--t2);">What we found:</strong> ${esc(r.note)}</div>` : ''}
+              ${(function(){ const lens = assessorLens(fw, st); return lens ? `<details><summary style="cursor:pointer;font-size:10px;font-weight:700;color:var(--gold);margin:6px 0 0 44px;list-style:none;">📖 Assessor’s lens</summary>${lens}</details>` : ''; })()}
           </div>`;
         }).join('')}
       </div>`;
     }).join('')}`).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ASSESSOR'S LENS — what inspectors examine & what strong evidence is
+// CQC entries: grounded in the published Single Assessment Framework
+// (paraphrased, not CQC's verbatim text). PAMMS: the standard text
+// plus the REAL assessor findings from the Wingate Walk report.
+// ═══════════════════════════════════════════════════════════════
+// CQC gathers evidence in six published categories: people's experience
+// of care · feedback from staff and leaders · feedback from partners ·
+// observation · processes · outcomes. Entries below say which matter
+// most per statement and what artefacts satisfy them.
+const EV_CQC = {
+  S1: { looks: 'How concerns, incidents and near-misses are reported, investigated without blame, and turned into change. CQC triangulates staff feedback (do people speak up?), your processes (incident system, investigation records) and outcomes (did practice actually change?).',
+        ev: 'Incident log with investigation notes and closure dates; theme analysis presented at governance meetings with the resulting action; staff who can describe a change made after an incident; near-miss entries (their presence is evidence of culture — an empty near-miss log is a red flag, not a clean sheet); duty of candour letters where triggered.',
+        flags: 'Incidents recorded but never analysed; the same incident type recurring with no intervention; staff unaware of what changed after events; near-misses absent from records.' },
+  S2: { looks: 'Safety across joins: referrals in, hospital admissions/discharges, transitions between services. Partners’ feedback and your process records carry weight here.',
+        ev: 'Pre-admission assessments completed before service start; hospital passports current; discharge information acted on with dated care plan updates; evidence of information shared with (and received from) CMHT/GP at each transition.',
+        flags: 'People arriving before assessment; hospital passports out of date; discharge summaries filed but plans unchanged.' },
+  S3: { looks: 'Whether staff recognise abuse and act: referrals made to the LA without delay, CQC notified, people protected during enquiries. Tested by interviewing staff and cross-checking your referral log against LA and CQC records.',
+        ev: 'Safeguarding log where every entry shows LA referral date + CQC notification date; staff who can name abuse types AND the external routes (LA, CQC, police) unprompted — the exact point Wingate failed on C04; body-map/records where relevant; lessons-shared evidence after concerns.',
+        flags: 'Referral log and LA records not matching; staff who would only "tell the manager"; notifications made late or missed.' },
+  S4: { looks: 'Positive risk-taking WITH the person rather than blanket restriction. People’s experience and processes are triangulated: does the risk assessment match the life the person actually lives?',
+        ev: 'Risk assessments that are person-specific, RAG-rated, linked to care plans (the Wingate A08 strength) and reviewed after incidents; records of the person’s involvement in risk decisions; enabling decisions documented (what the person is supported TO do, not just prevented from).',
+        flags: 'Identical generic assessments across people; restrictions with no capacity/best-interests basis; assessments not updated after events.' },
+  S5: { looks: 'Premises and equipment safety in fact, not on paper: certificates, servicing, fire precautions, and whether defects get fixed. Observation plus process records.',
+        ev: 'The full certificate set in date (gas, EICR, legionella regime, alarm/EML/extinguisher servicing); FRA actions closed with dates; PEEPs matching current mobility; defect log with the landlord chase trail in writing — the evidence the PAMMS assessor explicitly requested at E03.',
+        flags: 'Any lapsed certificate; FRA actions open without dates; hazards visible on the walk-round that appear in no log.' },
+  S6: { looks: 'Enough of the right staff, recruited safely, trained, supervised. Processes (files, rotas vs commissioned hours, training matrix) plus staff feedback.',
+        ev: 'Sampled staff files passing every Schedule 3 element; rotas demonstrably matching assessed hours; training matrix with dates not ticks; supervision and appraisal on cycle; agency profiles verified before shifts.',
+        flags: 'DBS gaps or post-start checks; unexplained employment gaps; matrix "compliance" that certificates cannot back up; supervision drift.' },
+  S7: { looks: 'IPC as practised: clean environments, trained staff, PPE in use. Heavily observation-led with process support.',
+        ev: 'Observed hand hygiene and PPE use; cleaning schedules signed in real time; IPC audits with actions closed; staff describing outbreak steps.',
+        flags: 'Schedules signed ahead of time; PPE stored but not used; IPC training done with practice visibly contrary.' },
+  S8: { looks: 'Medicines across the cycle: storage, administration, records, review — and whether staff know what they’re doing with PRN. Processes, observation, outcomes (error trends).',
+        ev: 'Clean MAR sampling; temperature logs in range; PRN protocols staff can describe unprompted (the Wingate C07 failure); annual observed competencies; error log with learning; medication reviews with the prescriber evidenced.',
+        flags: 'MAR gaps; protocols that exist but staff don’t know; competencies as e-learning only; errors unreported or unanalysed.' },
+  E1: { looks: 'Whether needs — including communication needs and protected characteristics — are properly assessed and kept current.',
+        ev: 'Assessments covering health, care, communication (AIS compliance), culture and relationships; updates dated after change; the person’s and family’s contribution visible.',
+        flags: 'Assessment frozen at admission; communication needs identified but no accessible materials in use.' },
+  E2: { looks: 'Care that follows recognised good practice for this population: PBS, STOMP, IDDSI, NICE where relevant.',
+        ev: 'PBS plans for behaviours of concern; psychotropic review records (STOMP); SALT guidance visibly followed at mealtimes; practice referenced to guidance in plans.',
+        flags: 'Restrictions instead of PBS; psychotropics unreviewed; IDDSI levels in the plan but not in the kitchen.' },
+  E3: { looks: 'Joint working that functions: information flowing between your team, health professionals and families. Partner feedback matters here — CQC may phone the CMHT.',
+        ev: 'Records of professional visits and what changed after; CPN/GP contact logs (the Wingate A15/B13 strength); MDT meeting notes; families reporting they’re kept informed.',
+        flags: 'Professionals’ advice recorded but not enacted; partners describing you as hard to reach.' },
+  E4: { looks: 'Support to live healthier lives: annual health checks, screening, health action plans, informed lifestyle choice (not imposed).',
+        ev: 'Annual health check completion for people with LD; health action plans current; screening uptake supported and recorded; healthy-choice support that respects capacity (the A18/B22 pattern Wingate rated Good).',
+        flags: 'Missed annual checks; health appointments unattended without follow-up; "choice" used to explain neglect of health needs.' },
+  E5: { looks: 'Outcomes measured and improving — the statement that separates Good from Outstanding. What is better in people’s lives because of your support, with evidence.',
+        ev: 'Per-person goals with dated progress; skills gained, community access, admissions avoided — counted; outcome summaries feeding governance; before/after examples you can narrate with records.',
+        flags: 'Goals set but never revisited; "settled" as the only outcome claimed.' },
+  E6: { looks: 'MCA in daily practice: capacity assumed, decision-specific assessment where indicated, best-interests done properly — and staff who can explain it. In supported living, deprivation of liberty needs Court of Protection authorisation (community DoL), not DoLS — inspectors notice teams who say "DoLS" here.',
+        ev: 'Decision-specific capacity assessments; best-interests records naming consultees; consent practice observable (knock-and-wait — Wingate B06); staff articulating the five principles (the C02 gap); CoP applications where the acid test is met.',
+        flags: 'Blanket capacity statements; restrictions with no legal basis; staff MCA knowledge limited to the training certificate.' },
+  C1: { looks: 'Kindness and dignity as observed fact and as people describe it. Observation and people’s experience dominate.',
+        ev: 'Interactions observed warm and unhurried; respectful language in daily notes (sampled); people saying they’re treated well in their own words (the Wingate B01 evidence).',
+        flags: 'Task-focused interactions; infantilising or judgemental note language; staff talking over people.' },
+  C2: { looks: 'People treated as individuals — culture, faith, identity, relationships honoured in practice, not just recorded.',
+        ev: 'Plans reflecting identity and preferences with practice to match (food, worship, relationships supported); protected characteristics handled with confidence.',
+        flags: 'Identical daily lives regardless of preference; cultural needs recorded then ignored.' },
+  C3: { looks: 'Independence, choice and control: people doing things for themselves, real options, advocacy offered.',
+        ev: 'Support plans built around what the person does themselves (the A08 self-care emphasis); choices visible in daily records; advocacy referrals where voice needs support.',
+        flags: 'Staff doing "for" not "with"; choices offered from a menu of one.' },
+  C4: { looks: 'Immediate needs answered: distress, pain and anxiety noticed and responded to quickly.',
+        ev: 'Daily notes showing prompt response to distress with what worked; PRN-for-distress used within protocol and reviewed; staff describing individual early-warning signs.',
+        flags: 'Distress recorded without response; escalation only after crisis.' },
+  C5: { looks: 'Workforce wellbeing: supported staff deliver compassionate care. Staff feedback is the evidence category.',
+        ev: 'Supervision that discusses wellbeing; debriefs after incidents; staff survey with actions; turnover and sickness understood and worked on.',
+        flags: 'Burnt-out accounts in interviews; incidents without debrief; exit patterns unexamined.' },
+  R1: { looks: 'Person-centred care: the plan is the person’s and changes when they change — and staff know it without reading it in front of the inspector.',
+        ev: 'Plans in the person’s voice with their involvement evidenced (signatures — Wingate A04); updates within days of changed need; staff answering person-specific questions accurately.',
+        flags: 'Plans describing a service not a person; staff unfamiliar with content; reviews that change nothing.' },
+  R2: { looks: 'Continuity and coordination: consistent staffing, smooth handoffs, one coherent picture of the person across services.',
+        ev: 'Rota continuity for each person; handover records; coordinated appointments with outcomes fed back into plans.',
+        flags: 'Rotating unfamiliar staff for people who need consistency; information lost between shifts.' },
+  R3: { looks: 'Information people can actually use — the Accessible Information Standard is a legal duty for adult social care.',
+        ev: 'Easy-read tenancy, guide, complaints route (the Wingate A02 evidence); communication formats recorded and used; interpreters where needed.',
+        flags: 'Standard-print-only documents for people who cannot use them; AIS needs unidentified.' },
+  R4: { looks: 'Listening and involving: feedback invited, acted on, and the loop closed visibly.',
+        ev: 'Surveys/feedback with actions AND you-said-we-did shared back (the F04 recommendation: document it and send to families); complaints log with learning; people confirming they are heard (B03).',
+        flags: 'Feedback collected into a drawer; complaints resolved with no change; "no complaints" presented as strength without evidence people know how.' },
+  R5: { looks: 'Equity in access: people get services when needed, including out of hours and urgent health access.',
+        ev: 'Out-of-hours arrangements that worked (dated examples); escalation to GP/111/999 timely in records; barriers (transport, communication) actively managed.',
+        flags: 'Delayed healthcare access; out-of-hours failures; access depending on staff goodwill rather than system.' },
+  R6: { looks: 'Equity in experience and outcome — no group faring worse; barriers found and removed.',
+        ev: 'Outcomes considered across the people you support; adjustments for communication, culture, disability documented and working; LeDeR learning applied where relevant.',
+        flags: 'One person’s poorer experience explained away; no curiosity about differential outcomes.' },
+  R7: { looks: 'Planning for the future: transitions, changing needs, and (where appropriate) end-of-life wishes explored sensitively.',
+        ev: 'Future-planning conversations recorded with the person/family; transition plans for service moves; advance wishes documented where the person engaged with the topic.',
+        flags: 'Future needs unconsidered until crisis; end-of-life topic avoided entirely for an ageing population.' },
+  W1: { looks: 'Shared direction and culture: values staff can state and are seen to live. Staff feedback plus observation.',
+        ev: 'Staff across roles describing the same priorities unprompted; values visible in decisions (recruitment questions, supervision themes); a positive, open feel the inspector senses on the day.',
+        flags: 'Leaders’ narrative contradicted by floor staff; values on the wall only.' },
+  W2: { looks: 'Capable, visible leadership: RM in post, known to people and staff, decisions traceable.',
+        ev: 'RM registration current; leadership visits/walkthroughs logged with actions (your Management Walkthroughs board); staff saying leaders are accessible and act.',
+        flags: 'Prolonged RM vacancy; leaders unknown at the houses; issues raised repeatedly without response.' },
+  W3: { looks: 'Freedom to speak up: staff raise concerns without fear and something happens.',
+        ev: 'Whistleblowing policy known (staff can name external routes — CQC, prescribed persons); speak-up instances handled well; no settlement gagging safeguarding matters (the Wingate C15/F05 pattern rated Good).',
+        flags: 'Fear in interviews; concerns raised then punished or vanished.' },
+  W4: { looks: 'Workforce equality and inclusion in substance: fair treatment, development for all, EDI beyond a policy.',
+        ev: 'Fair progression evidence; adjustments for staff who need them; sponsorship/visa workers treated lawfully and fairly; EDI actions with dates.',
+        flags: 'Concentration of concerns among one group; discriminatory rota or task patterns.' },
+  W5: { looks: 'Governance that actually governs: audit cycle running, actions closing, data reaching decisions, statutory duties (notifications, PIR, DoC) flawless. The heaviest process-evidence statement.',
+        ev: 'Audit calendar executed with closed actions (the F11 fix); governance minutes showing data → decision → follow-up; notifications cross-checked complete; PIR submitted well; risk register live.',
+        flags: 'Audits done but actions open; the same finding across cycles; notification gaps — the single fastest route to enforcement.' },
+  W6: { looks: 'Partnerships: open working with commissioners, safeguarding boards, health, families, community.',
+        ev: 'Provider forum attendance; commissioner quality visits with actions closed (F08 evidence pattern); joint working records (police, social workers, housing — as Wingate evidenced); community links per person.',
+        flags: 'Defensive posture with the LA; partners learning of incidents late.' },
+  W7: { looks: 'Learning, improvement and innovation as habit: the service can show what it changed, why, and what improved.',
+        ev: 'An improvement log with before/after; external learning imported (LeDeR, safety alerts, peer review); pilots evaluated honestly.',
+        flags: 'Improvement claimed without artefacts; alerts unread; the service identical to last inspection with the same weaknesses.' },
+  W8: { looks: 'Environmental sustainability: sensible, proportionate steps — CQC asks, weight is modest for small providers.',
+        ev: 'Waste and recycling arrangements; energy measures in homes; travel choices considered; anything measured, however small.',
+        flags: 'Nothing considered at all; claims with no substance.' },
+};
+
+// Wingate Walk precedent — the assessor's real findings, keyed by PAMMS code
+function pammsPrecedent(code) {
+  const w = MA_AUDITS.find(a => a.id === 'ma_wingate');
+  const r = w?.ratings?.[code];
+  if (!r || !r.note) return null;
+  return { rating: r.r, note: r.note };
+}
+
+// Build the lens panel for any framework/standard — returns '' when nothing factual to show
+function assessorLens(fw, st) {
+  if (fw === 'cqc' && EV_CQC[st.c]) {
+    const e = EV_CQC[st.c];
+    return `<div style="margin:8px 0 2px 44px;background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:11px 14px;font-size:11.5px;line-height:1.7;color:var(--t2);">
+      <div style="font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--gold);margin-bottom:5px;">What the inspector examines</div>${esc(e.looks)}
+      <div style="font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--grn);margin:9px 0 5px;">Strong evidence</div>${esc(e.ev)}
+      <div style="font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--red);margin:9px 0 5px;">Red flags</div>${esc(e.flags)}
+      <div style="font-size:9.5px;color:var(--t4);margin-top:8px;">Grounded in CQC’s published Single Assessment Framework (six evidence categories: people’s experience · staff & leader feedback · partner feedback · observation · processes · outcomes) — paraphrased guidance, not CQC’s verbatim text.</div>
+    </div>`;
+  }
+  if (fw === 'pamms') {
+    const p = pammsPrecedent(st.c);
+    if (p) {
+      const rm = SCALE_PAMMS[p.rating] || {};
+      return `<div style="margin:8px 0 2px 44px;background:var(--paper);border:1px solid var(--line);border-left:3px solid ${rm.color || 'var(--gold)'};border-radius:0 8px 8px 0;padding:11px 14px;font-size:11.5px;line-height:1.7;color:var(--t2);">
+        <div style="font-size:9px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:${rm.color || 'var(--gold)'};margin-bottom:5px;">Real precedent — Wingate Walk, 20 May 2026 · assessor rated: ${rm.label || '—'}</div>
+        <strong style="color:var(--t2);">What the assessor recorded:</strong> ${esc(p.note)}
+        <div style="font-size:9.5px;color:var(--t4);margin-top:8px;">Verbatim substance of the PAMMS South East assessment of this exact standard at your own service — the most factual guide to what this assessor accepts${p.rating === 'RI' || p.rating === 'P' ? ', and what falls short' : ''}.</div>
+      </div>`;
+    }
+    return '';
+  }
+  return '';
 }
 
 // ── BOOT ──────────────────────────────────────────────────────
