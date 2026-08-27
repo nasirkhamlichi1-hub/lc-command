@@ -3108,17 +3108,35 @@ const REG_FRAMEWORK = {
   ]},
 
   pamms: { label: 'PAMMS — LA quality assessment', icon: '📐', groups: [
-    { name: 'What Bucks & Oxon assessors score (prepare evidence per domain)', items: [
-      { id: 'p_d1', t: 'Involvement & Information', d: 'People understand their care; accessible formats (easy-read tenancy, plans, complaints); advocacy offered; evidence of information given BEFORE decisions', f: 'Assessment-ready', lvl: 'good' },
-      { id: 'p_d2', t: 'Personalised Care, Treatment & Support', d: 'Plans reflect the person not the service; outcomes recorded; reviews on time; health appointments supported and followed up', f: 'Assessment-ready', lvl: 'good' },
-      { id: 'p_d3', t: 'Safeguarding & Safety', d: 'Referral log matches LA records; risk assessments current; medication audits clean; finances of people supported audited monthly with receipts', f: 'Assessment-ready', lvl: 'good' },
-      { id: 'p_d4', t: 'Suitability of Staffing', d: 'Files pass the Schedule 3 test; training matrix compliant; supervision on cycle; safe rota levels vs commissioned hours', f: 'Assessment-ready', lvl: 'good' },
-      { id: 'p_d5', t: 'Quality & Management (Leadership)', d: 'Audit cycle with closed actions; complaints learning; business continuity; insurance schedule; policy review dates current', f: 'Assessment-ready', lvl: 'good' },
+    { name: 'Wingate Walk result — assessed 20 May 2026 · Overall: GOOD ★★★★ (the five domains)', items: [
+      { id: 'p_d1', t: 'Involvement & Information — rated GOOD ★★★★', d: 'Both sub-areas Good. Assessor praised person-centred plans, accessible formats, resident voice. Watch-item: MCA knowledge (C02) sits here — see close-out actions', f: 'Assessment-ready', lvl: 'good' },
+      { id: 'p_d2', t: 'Personalised Care & Support — rated GOOD ★★★★', d: 'Care & Welfare Good, Co-operating with Providers Good. RAG-rated PCS risk assessments, monthly reviews, resident-set goals all evidenced', f: 'Assessment-ready', lvl: 'good' },
+      { id: 'p_d3', t: 'Safeguarding & Safety — MIXED: three sub-areas Requires Improvement', d: 'Safeguarding from Abuse RI · Medicines RI · Premises RI — Cleanliness Good, Equipment Good. This domain is the re-assessment battleground: every RI here has a close-out action below', f: 'Until re-assessed', lvl: 'legal' },
+      { id: 'p_d4', t: 'Suitability of Staffing — rated GOOD ★★★★', d: 'Recruitment Good (file fixes actioned on the day — keep the audit sheet discipline), Deployment Good (BCP awareness C09 excepted), Staff Support Good with 100% training compliance noted', f: 'Assessment-ready', lvl: 'good' },
+      { id: 'p_d5', t: 'Quality of Management — Records sub-area Requires Improvement', d: 'Assessing & Monitoring Good, Complaints Good — Records RI (F11): incident tracker and full medication audit needed. Close-out actions below', f: 'Until re-assessed', lvl: 'legal' },
     ]},
-    { name: 'PAMMS logistics', items: [
-      { id: 'p_self', t: 'Self-assessment maintained so any request is a same-week return', d: 'Keep the PAMMS self-assessment live, not written under deadline', f: 'Quarterly refresh', lvl: 'out' },
-      { id: 'p_gaps', t: 'Last PAMMS actions closed with evidence', d: 'Known gaps from the last review (staff file completeness, PRN GP signature, audit programme) closed and evidenced', f: 'Until closed', lvl: 'legal' },
-      { id: 'p_room', t: 'Evidence room ready: one folder per domain', d: 'Digital folder per PAMMS domain so an assessor day needs zero scrambling', f: 'Standing', lvl: 'out' },
+    { name: 'Requires Improvement — close-out actions from the report', items: [
+      { id: 'pw_mca', t: 'C02 — MCA five principles reshared with the whole team', d: 'One staff member showed limited knowledge of the five MCA principles. Reshare with sign-sheet; test understanding in supervision', f: 'Until closed', lvl: 'legal' },
+      { id: 'pw_sgext', t: 'C04 — External safeguarding reporting routes briefed to all staff', d: 'Staff did not know how or who to report to OUTSIDE the organisation. Brief LA safeguarding, CQC and police routes; poster on noticeboard; record the briefing', f: 'Until closed', lvl: 'legal' },
+      { id: 'pw_sgtrain', t: 'C05 — Safeguarding / MCA / DoLS understanding reinforced beyond course completion', d: 'Training completed but understanding limited in places — targeted refresher plus competency questions in the next supervision round', f: 'Until closed', lvl: 'legal' },
+      { id: 'pw_prn', t: 'C07 — PRN protocols shared and known by every worker', d: 'PRN protocol EXISTS (F01 confirmed it, with dose intervals and 24h maximums) but staff were unaware of it. Toolbox talk + sign-sheet + spot-check questions', f: 'Until closed', lvl: 'legal' },
+      { id: 'pw_medaudit', t: 'F01/F11 — Formal medication audit introduced for management oversight', d: 'Weekly counts happen but no comprehensive audit. Introduce a monthly medication audit capturing storage, MAR accuracy, PRN, stock and competencies — reported into governance', f: 'Monthly once live', lvl: 'legal' },
+      { id: 'pw_premises', t: 'E03 — Premises defects fixed: broken door + medication-room flooring', d: 'Ripped flooring in the medication room is a trip hazard; one broken door — both reported to the landlord. Chase to completion and DOCUMENT the follow-up emails as evidence (assessor asked for this explicitly)', f: 'Until closed', lvl: 'legal' },
+      { id: 'pw_tenancy', t: 'C18 — Staff briefed on tenancy support and landlord liaison', d: 'Staff knew how to report repairs but not how to support tenancy management or liaise with the landlord. Brief the team; fold into induction', f: 'Until closed', lvl: 'legal' },
+      { id: 'pw_bcp', t: 'C09 — Business Continuity Plan location known by every staff member', d: 'Not all staff knew the BCP or where it lives (grab box). Walk-through at the next team meeting with a sign-sheet', f: 'Until closed', lvl: 'legal' },
+      { id: 'pw_inctracker', t: 'F11 — Central incident tracker with trend analysis', d: 'Incidents live only in daily notes. Stand up a central tracker so themes can be analysed and fed to weekly management meetings — this also powers the CQC learning-culture story', f: 'Until closed', lvl: 'legal' },
+    ]},
+    { name: 'Assessor recommendations — the polish that moves Good toward Excellent', items: [
+      { id: 'pw_cpvoice', t: 'A01 — Care plans: consistent voice, relapse indicators, likes & dislikes', d: 'Write plans in one consistent person; add what a mental-health relapse looks like and the actions staff take; add likes/dislikes', f: 'Next review cycle', lvl: 'good' },
+      { id: 'pw_reviews', t: 'A09 — Record WHO took part in each care plan review', d: 'Reviews happen monthly but participation is not recorded — name the resident/family/professional included each time', f: 'Monthly', lvl: 'good' },
+      { id: 'pw_rtw', t: 'D02 — Agency staff right-to-work share-code checks as routine', d: 'Actioned on the day for Angels agency profiles — make it a standing check on every agency profile', f: 'Per agency starter', lvl: 'good' },
+      { id: 'pw_yousaid', t: 'F04 — You-said-we-did documented and sent to families', d: 'Survey actions already evidenced with photos — now write it up and send to families so the loop is visibly closed', f: 'Annual', lvl: 'good' },
+      { id: 'pw_blend', t: 'D07 — Training blend: face-to-face alongside eLearning', d: '100% compliance on CLICK noted; assessor recommends mixing in face-to-face delivery', f: 'Ongoing', lvl: 'good' },
+      { id: 'pw_agenda', t: 'C16 — Team meeting agendas shared before the day', d: 'Staff see the agenda only on the day — circulate in advance so items can be added', f: 'Per meeting', lvl: 'good' },
+    ]},
+    { name: 'PAMMS standing readiness', items: [
+      { id: 'p_self', t: 'Self-assessment maintained so any request is a same-week return', d: 'Keep the PAMMS self-assessment live, not written under deadline. Wingate Walk proves the machinery works — replicate the evidence pack for every home', f: 'Quarterly refresh', lvl: 'out' },
+      { id: 'p_room', t: 'Evidence room ready: one folder per domain, per home', d: 'Digital folder per PAMMS domain so an assessor day needs zero scrambling — several Wingate fixes happened "on the day", which is rescue, not readiness', f: 'Standing', lvl: 'out' },
     ]},
   ]},
 
