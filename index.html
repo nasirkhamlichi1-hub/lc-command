@@ -288,6 +288,10 @@ main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
       Regulatory Map
       <span class="nav-badge" id="badgeReg" style="display:none;">0</span>
     </button>
+    <button class="nav-btn" data-pg="pamms" onclick="nav('pamms')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 13l2 2 4-4"/></svg>
+      PAMMS Audits
+    </button>
     <div class="sb-label">Compliance</div>
     <button class="nav-btn" data-pg="compliance" onclick="nav('compliance')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l7 4v5c0 4.4-3 8.5-7 9.5-4-1-7-5.1-7-9.5V7l7-4z"/></svg>
@@ -554,6 +558,7 @@ function render() {
   else if (curPage === 'intel') renderIntel(m);
   else if (curPage === 'pushqueue') renderSyncQueue(m);
   else if (curPage === 'regulatory') renderRegulatory(m);
+  else if (curPage === 'pamms') renderPamms(m);
   else if (curPage === 'compliance') renderCompliance(m);
   else if (curPage === 'certs') renderCerts(m);
   else if (curPage === 'verify') renderVerify(m);
@@ -2135,7 +2140,7 @@ function syncStatePush() {
   clearTimeout(_statePushTimer);
   _statePushTimer = setTimeout(async () => {
     try {
-      const snapshot = { tasks: MY_TASKS, chat: CHAT.slice(-60), risks: RISK_REGISTER.slice(0, 100), drafts: DRAFTS.slice(0, 20), syncQueue: SYNC_QUEUE.slice(0, 40), regChecks: REG_CHECKS, regHouse: REG_HOUSE };
+      const snapshot = { tasks: MY_TASKS, chat: CHAT.slice(-60), risks: RISK_REGISTER.slice(0, 100), drafts: DRAFTS.slice(0, 20), syncQueue: SYNC_QUEUE.slice(0, 40), regChecks: REG_CHECKS, regHouse: REG_HOUSE, pammsAudits: PAMMS_AUDITS };
       await fetch(BACKEND_BASE + '/state', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-lc-auth': authCode() },
@@ -2161,6 +2166,7 @@ async function syncStatePull() {
       if (Array.isArray(d.state.syncQueue)) SYNC_QUEUE = d.state.syncQueue;
       if (d.state.regChecks) { REG_CHECKS = d.state.regChecks; }
       if (d.state.regHouse) { REG_HOUSE = d.state.regHouse; }
+      if (Array.isArray(d.state.pammsAudits) && d.state.pammsAudits.length) { PAMMS_AUDITS = d.state.pammsAudits; try { localStorage.setItem('lc_pamms_audits', JSON.stringify(PAMMS_AUDITS)); } catch (e) {} }
       try { localStorage.setItem('lc_reg_checks', JSON.stringify(REG_CHECKS)); localStorage.setItem('lc_reg_house', JSON.stringify(REG_HOUSE)); } catch (e) {}
       localStorage.setItem('lc_state_ts', d.state.updatedAt);
       persistChat(); persist(); updateBadges(); render();
@@ -2328,7 +2334,7 @@ const AI_TOOLS = [
     name: 'get_business_data',
     description: 'Pull detailed live data beyond the snapshot: full email list, all compliance items, every certificate, all tasks, risk register.',
     input_schema: { type: 'object', properties: {
-      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts', 'oversight', 'regulatory'] },
+      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts', 'oversight', 'regulatory', 'pamms_audits'] },
     }, required: ['area'] },
   },
 ];
@@ -2381,6 +2387,13 @@ async function executeAITool(name, input) {
       if (a === 'risks') return { ok: true, msg: JSON.stringify(RISK_REGISTER.filter(r => !r.resolved)) };
       if (a === 'drafts') return { ok: true, msg: JSON.stringify(DRAFTS.slice(0, 10).map(d => ({ to: d.to, subject: d.subject, status: d.status }))) };
       if (a === 'oversight') { const o = computeOversight(); return { ok: true, msg: JSON.stringify({ lastSync: OVERSIGHT_CACHE.lastSync, totals: o.totals, boards: o.boards.map(b => ({ name: b.name, score: b.score, open: b.open, exceptions: b.exceptions.slice(0, 12) })) }) }; }
+      if (a === 'pamms_audits') {
+        return { ok: true, msg: JSON.stringify(PAMMS_AUDITS.map(au => {
+          const ov = pammsOverall(au);
+          return { house: au.house, date: au.date, overall: PAMMS_RATINGS[ov.overall]?.label, rated: ov.rated, total: ov.total,
+            weak: Object.entries(au.ratings).filter(([, v]) => v.r === 'RI' || v.r === 'P').map(([c, v]) => c + ': ' + (v.note || '').slice(0, 100)) };
+        })) };
+      }
       if (a === 'regulatory') {
         const gaps = {};
         Object.entries(REG_FRAMEWORK).forEach(([k, dd]) => {
@@ -3329,6 +3342,383 @@ function renderHouseMatrix(d, filter) {
     </table>
   </div>
   <div style="font-size:11px;color:var(--t3);margin-top:10px;">Tip — the Safety Certificates rows mirror your Brunel — Safety Certificates board: run the Oversight sweep and cross-check the two until they agree, then this matrix becomes your inspection-day answer sheet.</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PAMMS SELF-AUDIT — the full assessment template, per house
+// Mirrors South East Supported Living Services v20-1
+// ═══════════════════════════════════════════════════════════════
+let PAMMS_AUDITS = JSON.parse(localStorage.getItem('lc_pamms_audits') || '[]');
+function persistPamms() {
+  try { localStorage.setItem('lc_pamms_audits', JSON.stringify(PAMMS_AUDITS)); } catch (e) {}
+  if (typeof syncStatePush === 'function') syncStatePush();
+}
+
+const PAMMS_RATINGS = {
+  EX: { label: 'Excellent', color: '#1B7A44', short: 'EX' },
+  G:  { label: 'Good', color: '#4C9A2A', short: 'G' },
+  RI: { label: 'Requires Improvement', color: '#B45309', short: 'RI' },
+  P:  { label: 'Poor', color: '#C6362E', short: 'P' },
+  NA: { label: 'Not Assessed', color: '#8A8F9C', short: 'N/A' },
+};
+
+// The complete standard set — structure and criteria as assessed
+const PAMMS_TEMPLATE = [
+  { domain: 'Involvement and Information', sections: [
+    { name: 'Respecting and Involving Service Users', stds: [
+      { c: 'A01', t: 'Care plan individually tailored, person centred, includes SU preferences and views and clearly evidences their involvement in decisions about how care and support is delivered (pre-admission, daily records, across care plans)' },
+      { c: 'A02', t: 'Evidence SU’s are given information in appropriate formats (accessible information standards) to make informed decisions, including advice on welfare benefits and opportunities' },
+      { c: 'B01', t: 'SU’s confirm no discrimination; treated as individuals; diversity respected; privacy, dignity and independence upheld; kindness, compassion, empathy; choices and preferences supported' },
+      { c: 'B02', t: 'SU’s confirm they are placed at the centre of their care with adequate information for informed decisions, and advised on welfare benefits and opportunities' },
+      { c: 'B03', t: 'SU’s confirm they are encouraged to give feedback on how the service might improve, are listened to, and feedback is acted upon' },
+      { c: 'B04', t: 'SU’s confirm support to maintain relationships with family, friends and community, and to play an active role locally as far as they wish' },
+      { c: 'B05', t: 'SU’s confirm support to enjoy activities and social opportunities based on preferences and strengths, as part of everyday life' },
+      { c: 'C01', t: 'Staff can explain how they ensure people are treated with dignity and respect' },
+    ]},
+    { name: 'Consent', stds: [
+      { c: 'A03', t: 'Care plans evidence capacity assessments carried out and reviewed; best-interest decisions documented; advanced decisions recorded and followed (MCA); restrictions in line with DoLS; DoLS expiry dates; POA documented where relevant' },
+      { c: 'B06', t: 'Observation evidences staff understand when to obtain consent, verbal or implied consent, and how to document records of consent' },
+      { c: 'C02', t: 'Staff can describe how the principles of the MCA are put into practice in their daily work' },
+      { c: 'A18', t: 'Plans evidence SU’s supported and signposted to services; informed lifestyle choices per MCA 2005; due process where choice conflicts with health promotion' },
+      { c: 'B22', t: 'SU’s confirm signposting to relevant services and support with informed lifestyle choices, including choices that may conflict with health promotion messages' },
+    ]},
+  ]},
+  { domain: 'Personalised Care and Support', sections: [
+    { name: 'Care and Welfare of Service Users', stds: [
+      { c: 'A04', t: 'Care plans signed by the SU where appropriate to evidence involvement; plans clear, accessible and sufficiently detailed for staff to provide effective support' },
+      { c: 'A05', t: 'Where a key worker system is in place it is clearly recorded in care plans and the SU has been given appropriate information about it' },
+      { c: 'A06', t: 'Evidence SU’s have been given information on how to contact the care provider' },
+      { c: 'A07', t: 'Care assessment reflects SU’s strengths, abilities and interests; reflected in care plans including family, friends, community links and preferred activities' },
+      { c: 'A08', t: 'SU needs and risks to health and wellbeing taken into account through assessment and reflected in planned delivery; SU’s undertake self-care and retain control of daily living decisions wherever possible' },
+      { c: 'A09', t: 'Care and support plans regularly reviewed and maintained to reflect current needs, including risk reviews, effectively managed to keep the SU safe' },
+      { c: 'A10', t: 'Daily records maintained with up-to-date information reflecting the current needs of the individual' },
+      { c: 'A11', t: 'Care planning designed to maximise independence and quality of life; SU’s supported to set goals' },
+      { c: 'B07', t: 'SU’s confirm involvement in assessment and planning; supported in goal-setting; reflected in a written plan regularly reviewed with their (and carers’) involvement' },
+      { c: 'B08', t: 'If a key worker system is in place, SU’s know who their named care worker is' },
+      { c: 'B09', t: 'Discussion and observation demonstrate the SU remains safe, needs met, welfare protected; care is effective, enabling, maximises independence and quality of life' },
+      { c: 'C03', t: 'Staff understand and can explain the role of the keyworker if used in the service' },
+    ]},
+    { name: 'Co-operating with other Providers', stds: [
+      { c: 'A15', t: 'Where care is shared with other providers, plans evidence co-operation; transfers reflected appropriately in records' },
+      { c: 'B13', t: 'Evidence staff support SU’s to access other social care or health services as required' },
+    ]},
+  ]},
+  { domain: 'Safeguarding and Safety', sections: [
+    { name: 'Safeguarding People who use the Service from Abuse', stds: [
+      { c: 'A17', t: 'Assessments and plans effectively maintain safety; DoLS only used in the SU’s best interests where possible and appropriate' },
+      { c: 'B20', t: 'SU’s confirm they feel safe; observations confirm; any SU subject to a safeguarding confirms appropriate support from the provider' },
+      { c: 'C04', t: 'Staff can explain identifying and preventing abuse, action on suspicion, responsibilities under LA safeguarding and whistleblowing policy, and who to report to inside AND outside the organisation' },
+      { c: 'C05', t: 'Staff confirm appropriate training on safeguarding adults, MCA and DoLS — with genuine understanding' },
+    ]},
+    { name: 'Cleanliness and Infection Control', stds: [
+      { c: 'B14', t: 'Staff observed following good practice on cleanliness and infection control' },
+      { c: 'C06', t: 'Staff confirm IPC training and can explain infection prevention and appropriate waste management' },
+      { c: 'E01', t: 'Sufficient information provided to SU’s, staff and visitors about infection prevention and control' },
+    ]},
+    { name: 'Management of Medicines', stds: [
+      { c: 'B15', t: 'Staff observed handling medicines safely, securely and appropriately' },
+      { c: 'B16', t: 'SU’s confirm involvement in decisions regarding their medication' },
+      { c: 'C07', t: 'Responsible staff can explain appropriate handling of medications, required training and competency in line with mandatory requirements and local contract requirements — including PRN protocols' },
+      { c: 'E02', t: 'Medicines stored and administered safely including homely remedies and covert medication; temperatures; controlled drugs' },
+      { c: 'F01', t: 'Appropriate records around prescribing, administration, monitoring and review of medications — including audits for management oversight' },
+      { c: 'A16', t: 'Plans document SU involvement in medication decisions (capacity permitting); covert administration evidenced by capacity assessment, best-interest decision and signed GP/pharmacy agreements' },
+    ]},
+    { name: 'Safety and Suitability of Premises', stds: [
+      { c: 'E03', t: 'Premises are safe; people, staff and others protected against risks of unsafe or unsuitable premises; defects chased with the landlord and follow-up documented' },
+      { c: 'B23', t: 'SU’s confirm support to maintain their tenancy, including property maintenance and negotiating with the landlord on their behalf where appropriate' },
+      { c: 'C18', t: 'Staff can confirm how they support SU’s to maintain tenancy, manage maintenance and negotiate with the landlord where appropriate' },
+    ]},
+    { name: 'Safety, Availability and Suitability of Equipment', stds: [
+      { c: 'C08', t: 'Staff confirm training on safe equipment use, confidence to do so, and available support' },
+      { c: 'E04', t: 'Equipment suitable, available, tested and maintained, used correctly and safely, comfortable, promotes independence, stored safely' },
+    ]},
+  ]},
+  { domain: 'Suitability of Staffing', sections: [
+    { name: 'Requirements Relating to Staff Recruitment', stds: [
+      { c: 'D01', t: 'Recruitment records confirm all relevant employment checks: suitable DBS before starting work, right to work in the UK, professional body registration where relevant; full work history with gaps explored; verified references' },
+      { c: 'D02', t: 'Agency/voluntary staff subject to the same level of checks; agency profiles in place (training, DBS, photo, RTW); in-house induction evidenced' },
+      { c: 'D03', t: 'Others providing additional services (e.g. hairdresser, podiatrist) subject to appropriate checks; insurance on file' },
+      { c: 'D04', t: 'Procedures ensure all staff — including temporary, agency, students, trainees — clearly understand role and responsibilities' },
+    ]},
+    { name: 'Staffing and Staff Deployment', stds: [
+      { c: 'B17', t: 'Observation and SU discussion confirm sufficient staff with the right knowledge, experience, qualifications and skills; staff communicate effectively with SU’s of varied needs' },
+      { c: 'C09', t: 'Staff confirm appropriate staffing levels; robust cover for sickness, vacancies, absences, emergencies; access to senior support; awareness of Business Continuity Plan and its location' },
+      { c: 'F02', t: 'Rotas and records show sufficient staff with right knowledge, experience, qualifications and skills, including senior/supervisory cover' },
+      { c: 'F03', t: 'Robust mechanisms for expected and unexpected changes; working hours monitored across services so patterns do not harm care' },
+      { c: 'C17', t: 'Staff show appropriate knowledge of current health promotion to help SU’s maximise health, wellbeing and a fulfilled life' },
+    ]},
+    { name: 'Staff Support', stds: [
+      { c: 'C10', t: 'Staff confirm appropriate induction at the start of employment in line with Skills for Care — Care Certificate' },
+      { c: 'C11', t: 'Staff confirm regular supervision in line with contract; performance appraised; annual review' },
+      { c: 'C12', t: 'Staff confirm appropriate training, refreshed and updated as required' },
+      { c: 'C13', t: 'Agency staff (where used) confirm appropriate induction to the service' },
+      { c: 'C14', t: 'Staff feel supported and know the mechanisms to prevent and manage bullying, harassment and violence at work' },
+      { c: 'D05', t: 'Provider records evidence in-house induction for all staff; those new to care receive Care Certificate-aligned induction; shadowing; competency observation before lone tasks' },
+      { c: 'D06', t: 'Provider records evidence supervision per contract standards, appraisal, annual review' },
+      { c: 'D07', t: 'Provider records evidence core and additional training, refreshed and updated as required — blended delivery' },
+    ]},
+  ]},
+  { domain: 'Quality of Management', sections: [
+    { name: 'Assessing and Monitoring the Quality of Service Provision', stds: [
+      { c: 'C15', t: 'Staff confirm confidence to raise concerns about risks and poor performance openly, with management support' },
+      { c: 'F04', t: 'Provider continually gathers and evaluates quality information — complaints, incidents, adverse events, errors, near misses, audits, reviews — and acts on learning; you-said-we-did closed with families' },
+      { c: 'F05', t: 'Clear mechanisms for people including staff to raise concerns about risk and poor performance openly; quality information provided to service users' },
+    ]},
+    { name: 'Using Information and Dealing with Complaints', stds: [
+      { c: 'B18', t: 'SU’s know how to complain and have information on what to do and how to contact the provider, LA and LGO' },
+      { c: 'B19', t: 'SU’s confirm they would be supported to complain; complainants kept informed of outcomes in a timely way; the service learns' },
+      { c: 'C16', t: 'Staff feel listened to; organised meetings to raise issues and ideas; views taken into account; feedback provided; agendas shared in advance' },
+      { c: 'F06', t: 'Provider fully considers, responds to and resolves complaints; learns and shares learning; adequate records of investigation, responses, outcomes, actions' },
+      { c: 'F07', t: 'Effective methods to obtain feedback from SU’s, relatives and staff; feedback acted on; people informed of outcomes' },
+      { c: 'F08', t: 'Clear evidence the provider shares appropriate details of complaints and outcomes with the Local Authority' },
+    ]},
+    { name: 'Records', stds: [
+      { c: 'F09', t: 'Personal records of SU’s are clear, accurate, factual, complete, personalised, fit for purpose, up to date, held securely, confidential' },
+      { c: 'F11', t: 'Range of appropriate, effective audits analysed with action plans: timelines, responsible staff, progress recorded; robust criteria; incident tracking and trend analysis; best practice includes external audit' },
+    ]},
+  ]},
+];
+
+const PAMMS_HOUSES = [...HOMES, 'Wingate Walk'];
+
+// Seed the real Wingate Walk report as the first audit
+function seedWingateAudit() {
+  if (PAMMS_AUDITS.some(a => a.seeded)) return;
+  const R = {
+    A01:['G','Plans on PCS, person-centred. Recs: consistent voice; add relapse indicators + actions; add likes/dislikes'],
+    A02:['G','Standard care plan format + SU guide; accessible health promotion materials'],
+    B01:['G','SU: staff are great, knock and wait, choices his own'], B02:['G','Supported to decide; staff advise, SU decides'],
+    B03:['G','Can feedback anytime, staff listen'], B04:['G','Supported to keep family contact; decides himself on friends'],
+    B05:['G','Activities always offered, never pushy'], C01:['G','Staff articulate dignity, choice, individuality'],
+    A03:['NA','All SU’s have capacity — not assessed'], B06:['G','Observed: knocking, waiting, consent sought'],
+    C02:['RI','Some MCA understanding; one staff limited on the five principles — reshare with team'],
+    A18:['G','Health promotion visible; healthy living folder'], B22:['G','Addiction support offered and accessible'],
+    A04:['G','Plans signed by SU'], A05:['NA','No key worker system'], A06:['G','SU guide has manager, CQC, LGO contacts'],
+    A07:['G','Assessment captures history, risks, strengths, goals; flows to plans'],
+    A08:['G','PCS risk assessments RAG-rated + scored, linked to plans (14 risk types)'],
+    A09:['G','Monthly reviews, dated updates. Rec: record who was included'],
+    A10:['G','Detailed daily notes: engagement, mood, professionals, incidents'],
+    A11:['G','SU-set goals linked to staff support'], B07:['G','SU: staff talk about needs, he tells them'],
+    B08:['NA','No key worker system'], B09:['G','SU feels safe, independent, helped where needed'],
+    C03:['G','No named keyworkers; any staff assist; role understood'],
+    A15:['G','All SU’s have CPNs; medication reviews by Whiteleaf'], B13:['G','Mental health team involved; CPN each'],
+    A17:['G','Capacity throughout; no restrictive practice; tenancy house rules'],
+    B20:['G','SU part of a safeguarding felt supported; feels safe'],
+    C04:['RI','Would tell house leader; unsure how/who to report OUTSIDE the organisation — share routes'],
+    C05:['RI','Training received but understanding limited in areas — reinforce'],
+    B14:['G','Observed cleaning with PPE'], C06:['G','Annual IPC training; practices described'],
+    E01:['G','Clean, maintained; IPC information present'],
+    B15:['NA','Administration not observed'], B16:['G','SU involved in Whiteleaf reviews'],
+    C07:['RI','Training + annual competency done; PRN protocol unknown to staff — share'],
+    E02:['G','Locked cupboard/room, original boxes, temps twice daily, CDs secured'],
+    F01:['RI','eMAR linked to devices, Friday counts, psychiatrist reviews, PRN protocol exists. Rec: introduce medication audits for governance'],
+    A16:['G','Depo via CPN documented; non-compliance actions; CTO recall condition captured'],
+    E03:['RI','Broken door + ripped medication-room flooring (trip hazard) reported. Document landlord follow-up emails'],
+    B23:['G','Staff would help with tenancy'], C18:['RI','Repairs route known; tenancy support/landlord liaison unclear — brief team'],
+    C08:['NA','No equipment in use'], E04:['G','No equipment — not assessed'],
+    D01:['G','Fixed on the day: enhanced DBS requested, gaps form completed, new references; audit sheet in place'],
+    D02:['G','Angels agency profiles (training, DBS, photo). RTW share-code check actioned'],
+    D03:['G','Hairdresser + podiatrist: DBS + insurance on file'], D04:['G','JD + handbook month one; contracts; annual med competency'],
+    B17:['G','Trained, knowledgeable staff on every visit'],
+    C09:['RI','2/2/1 waking night; agency cover rare; BCP not known by all — share location (grab box)'],
+    F02:['G','Rotas a month ahead; always sufficient'], F03:['G','BCP in grab box: IT outage, staffing loss, utilities, contacts'],
+    C17:['G','Healthy choices supported; GP appointments; kitchen folder'],
+    C10:['G','2-3 day induction, policies, 2-week shadowing, extendable'], C11:['G','Quarterly supervision + annual appraisal'],
+    C12:['G','CLICK app, blended, refreshed'], C13:['G','Agency inducted, lighter than staff'],
+    C14:['G','Whistleblowing/bullying policies known; open door'], D05:['G','2-day induction; shadow shifts; 3 med observations; Care Certificate'],
+    D06:['G','Supervision matrix quarterly + appraisal'], D07:['G','100% CLICK compliance. Rec: mix face-to-face'],
+    C15:['G','Confident to raise concerns incl. whistleblowing'],
+    F04:['G','Annual surveys + feedback forms; actions photographed. Rec: document + send to families'],
+    F05:['G','Whistleblowing + complaints on noticeboard with CQC, NHSE, Speak Up, Protect'],
+    B18:['G','Would speak to staff/manager; no reason to complain'], B19:['G','Trusts manager would sort things'],
+    C16:['G','Quarterly meetings ×2 sittings. Rec: share agenda in advance'],
+    F06:['G','Tracker: who, date, action; completion-date column added on the day'],
+    F07:['G','Weekly mgmt meetings minuted; quarterly staff meetings; SUs prefer in-the-moment'],
+    F08:['G','Safeguardings to LA; CQC notified; joint meetings with police, social workers, Trinity'],
+    F09:['G','PCS + handhelds; eMAR; PeopleHR files'],
+    F11:['RI','Monthly audits (care, dignity, fire, IPC) with actions. Recs: incident tracker for trends; full medication audit; staff-file gaps check added on the day'],
+  };
+  const ratings = {};
+  Object.entries(R).forEach(([code, [r, note]]) => ratings[code] = { r, note });
+  PAMMS_AUDITS.unshift({
+    id: 'pa_wingate_2605', seeded: true, house: 'Wingate Walk', date: '2026-05-20',
+    assessor: 'PAMMS South East (Buckinghamshire)', overall: 'G', ratings,
+  });
+  persistPamms();
+}
+
+function pammsSectionRating(audit, stds) {
+  const rs = stds.map(s => audit.ratings[s.c]?.r).filter(r => r && r !== 'NA');
+  if (!rs.length) return 'NA';
+  if (rs.includes('P')) return 'P';
+  if (rs.includes('RI')) return 'RI';
+  if (rs.every(r => r === 'EX')) return 'EX';
+  return 'G';
+}
+
+function pammsOverall(audit) {
+  const all = PAMMS_TEMPLATE.flatMap(d => d.sections.flatMap(s => s.stds));
+  const rated = all.filter(s => audit.ratings[s.c]?.r).length;
+  const secs = PAMMS_TEMPLATE.flatMap(d => d.sections.map(s => pammsSectionRating(audit, s.stds)));
+  const real = secs.filter(r => r !== 'NA');
+  let overall = 'NA';
+  if (real.length) {
+    if (real.includes('P')) overall = 'P';
+    else if (real.filter(r => r === 'RI').length >= 2) overall = 'RI';
+    else if (real.includes('RI')) overall = 'G';
+    else if (real.every(r => r === 'EX')) overall = 'EX';
+    else overall = 'G';
+  }
+  return { rated, total: all.length, overall };
+}
+
+function setPammsRating(auditId, code, r) {
+  const a = PAMMS_AUDITS.find(x => x.id === auditId);
+  if (!a) return;
+  if (!a.ratings[code]) a.ratings[code] = {};
+  a.ratings[code].r = a.ratings[code].r === r ? null : r;
+  persistPamms(); render();
+}
+
+function pammsNote(auditId, code) {
+  const a = PAMMS_AUDITS.find(x => x.id === auditId);
+  if (!a) return;
+  const cur = a.ratings[code]?.note || '';
+  openModal(`${code} — what we found`, `
+    <textarea id="pammsNoteIn" style="width:100%;min-height:140px;padding:12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-family:var(--sans);font-size:12.5px;line-height:1.65;outline:none;">${esc(cur)}</textarea>
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="savePammsNote('${auditId}','${code}')">Save</button>
+  `);
+}
+
+function savePammsNote(auditId, code) {
+  const a = PAMMS_AUDITS.find(x => x.id === auditId);
+  const v = document.getElementById('pammsNoteIn')?.value || '';
+  if (!a.ratings[code]) a.ratings[code] = {};
+  a.ratings[code].note = v;
+  persistPamms(); closeModal(); render();
+}
+
+function newPammsAudit() {
+  openModal('New PAMMS self-audit', `
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">House</label>
+    <select id="paHouse" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;background:white;margin-bottom:12px;">
+      ${PAMMS_HOUSES.map(h => `<option>${h}</option>`).join('')}
+    </select>
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">Audit date</label>
+    <input id="paDate" type="date" value="${new Date().toISOString().slice(0,10)}" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;">
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="createPammsAudit()">Start audit</button>
+  `);
+}
+
+function createPammsAudit() {
+  const house = document.getElementById('paHouse')?.value || PAMMS_HOUSES[0];
+  const date = document.getElementById('paDate')?.value || new Date().toISOString().slice(0,10);
+  const a = { id: 'pa_' + Date.now(), house, date, assessor: 'Self-audit — Nasir Khamlichi', ratings: {} };
+  PAMMS_AUDITS.unshift(a);
+  persistPamms(); closeModal();
+  nav('pamms', { aid: a.id });
+}
+
+function deletePammsAudit(id) {
+  if (!confirm('Delete this audit?')) return;
+  PAMMS_AUDITS = PAMMS_AUDITS.filter(a => a.id !== id);
+  persistPamms(); nav('pamms');
+}
+
+function copyPammsAudit(id) {
+  const a = PAMMS_AUDITS.find(x => x.id === id);
+  if (!a) return;
+  const ov = pammsOverall(a);
+  let md = `# PAMMS Self-Audit — ${a.house}\n${fD(a.date)} · ${a.assessor}\nOverall: ${PAMMS_RATINGS[ov.overall]?.label || '—'} · ${ov.rated}/${ov.total} standards rated\n`;
+  PAMMS_TEMPLATE.forEach(d => {
+    md += `\n## ${d.domain}\n`;
+    d.sections.forEach(s => {
+      md += `\n### ${s.name} — ${PAMMS_RATINGS[pammsSectionRating(a, s.stds)]?.label}\n`;
+      s.stds.forEach(st => {
+        const r = a.ratings[st.c];
+        md += `- **${st.c}** [${r?.r ? PAMMS_RATINGS[r.r].label : 'Unrated'}] ${st.t}\n`;
+        if (r?.note) md += `  - What we found: ${r.note}\n`;
+      });
+    });
+  });
+  navigator.clipboard?.writeText(md).then(() => toast('Audit copied as report ✓'));
+}
+
+// ═══ RENDER ═══
+function renderPamms(m) {
+  seedWingateAudit();
+  const aid = curState.aid || PAMMS_AUDITS[0]?.id;
+  const audit = PAMMS_AUDITS.find(a => a.id === aid);
+
+  m.innerHTML = bc('Regulatory', 'PAMMS <em>Self-Audit</em>', 'The full assessment template — audit any house exactly as the LA will') +
+  `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+    ${PAMMS_AUDITS.map(a => {
+      const ov = pammsOverall(a);
+      const rm = PAMMS_RATINGS[ov.overall];
+      return `<button class="btn btn-sm ${a.id===aid?'btn-prim':'btn-sec'}" onclick="nav('pamms',{aid:'${a.id}'})">
+        ${esc(a.house)} · ${fD(a.date)} <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${rm?.color};margin-left:4px;"></span>
+      </button>`;
+    }).join('')}
+    <button class="btn btn-gold btn-sm" onclick="newPammsAudit()">+ New audit</button>
+    <div style="flex:1;"></div>
+    ${audit ? `<button class="btn btn-sec btn-sm" onclick="copyPammsAudit('${audit.id}')">📄 Copy report</button>
+    ${CONN.aiKey ? `<button class="btn btn-sec btn-sm" onclick="askDock('Review my current PAMMS self-audit — which standards are weakest, what would the assessor score, and what should I fix before they visit?')">✦ Assessor’s eye</button>` : ''}
+    ${!audit.seeded ? `<button class="btn btn-ghost btn-sm" onclick="deletePammsAudit('${audit.id}')">Delete</button>` : ''}` : ''}
+  </div>` +
+  (!audit ? '<div class="card"><div class="empt">Create your first audit</div></div>' : (() => {
+    const ov = pammsOverall(audit);
+    const orm = PAMMS_RATINGS[ov.overall];
+    return `<div class="card mb-4">
+      <div class="card-body" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+        <div>
+          <div style="font-family:var(--serif);font-size:19px;">${esc(audit.house)}</div>
+          <div style="font-size:11px;color:var(--t3);">${fD(audit.date)} · ${esc(audit.assessor)}</div>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="text-align:center;">
+          <div style="font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);">Computed overall</div>
+          <div style="font-family:var(--serif);font-size:21px;color:${orm?.color};font-weight:600;">${orm?.label || '—'}</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);">Standards rated</div>
+          <div style="font-family:var(--serif);font-size:21px;">${ov.rated}<span style="font-size:13px;color:var(--t3);">/${ov.total}</span></div>
+        </div>
+      </div>
+    </div>` +
+    PAMMS_TEMPLATE.map(d => `
+      <div style="font-family:var(--serif);font-size:17px;margin:22px 0 10px;color:var(--t1);">${d.domain}</div>
+      ${d.sections.map(s => {
+        const sr = pammsSectionRating(audit, s.stds);
+        const srm = PAMMS_RATINGS[sr];
+        return `<div class="card mb-3">
+          <div class="card-h">
+            <div class="card-t" style="font-size:13px;">${esc(s.name)}</div>
+            <span class="pill" style="margin-left:auto;background:${srm.color}1C;color:${srm.color};">${srm.label}</span>
+          </div>
+          ${s.stds.map(st => {
+            const r = audit.ratings[st.c] || {};
+            return `<div style="padding:11px 16px;border-top:1px solid var(--line);">
+              <div style="display:flex;gap:10px;align-items:flex-start;">
+                <span class="mono" style="font-size:10.5px;font-weight:700;color:var(--gold);min-width:30px;padding-top:2px;">${st.c}</span>
+                <div style="flex:1;font-size:12px;line-height:1.6;color:var(--t2);">${esc(st.t)}</div>
+                <div style="display:flex;gap:4px;flex-shrink:0;">
+                  ${Object.entries(PAMMS_RATINGS).map(([k, rm]) => `
+                    <button onclick="setPammsRating('${audit.id}','${st.c}','${k}')" title="${rm.label}"
+                      style="min-width:30px;height:24px;padding:0 6px;border-radius:6px;font-size:9px;font-weight:800;cursor:pointer;transition:all 0.12s;
+                      border:1.5px solid ${r.r===k?rm.color:'var(--line2)'};background:${r.r===k?rm.color:'white'};color:${r.r===k?'white':'var(--t3)'};">${rm.short}</button>`).join('')}
+                  <button onclick="pammsNote('${audit.id}','${st.c}')" title="What we found" style="height:24px;padding:0 8px;border-radius:6px;border:1.5px solid ${r.note?'var(--gold)':'var(--line2)'};background:${r.note?'var(--gold-soft)':'white'};color:${r.note?'var(--gold)':'var(--t4)'};font-size:11px;cursor:pointer;">✎</button>
+                </div>
+              </div>
+              ${r.note ? `<div style="margin:7px 0 0 40px;font-size:11px;color:var(--t3);background:var(--paper);border-left:2.5px solid var(--gold);padding:6px 10px;border-radius:0 6px 6px 0;line-height:1.6;"><strong style="color:var(--t2);">What we found:</strong> ${esc(r.note)}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('')}`).join('');
+  })());
 }
 
 // ── BOOT ──────────────────────────────────────────────────────
