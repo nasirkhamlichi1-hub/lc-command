@@ -4921,7 +4921,7 @@ function renderJourneyWizard(m, p) {
 
 // Factual seed from the live Monday candidates board
 function seedJourney() {
-  if (localStorage.getItem('lc_people_seeded')) return;
+  if (!localStorage.getItem('lc_people_seeded'))
   if (!PEOPLE.length) {
     PEOPLE = [
       { id: 'jp_mel', name: 'Melissa “Mel” Vear', role: 'Administrator', house: 'Head office', startDate: '2026-09-21', stage: 'prestart',
@@ -4935,10 +4935,10 @@ function seedJourney() {
   }
   try { localStorage.setItem('lc_people_seeded', '1'); } catch (e) {}
 
-  // v2: the full current-staff roster from LH — Staff Files Audit (read 27 Aug 2026).
-  // Existing staff join as CONFIRMED with legacy flag; training dates start EMPTY —
-  // no date is evidenced until entered from a certificate.
-  if (!localStorage.getItem('lc_people_seeded_v2')) {
+  // The full current-staff roster from LH — Staff Files Audit (read 27 Aug 2026).
+  // Runs on EVERY load and merges by name/mondayId — idempotent, self-healing
+  // against stale seed flags and cross-device sync overwrites.
+  {
     const roster = [
       ['3068288994','Barrie Yakuba'],['3068324935','Ali Raza'],['3068352878','Algony Gotami'],
       ['3068352508','Eghosa Omoruyi'],['3068288871','Augustina Akrasi'],['3068324992','Gerrad Yeboah'],
@@ -4964,9 +4964,9 @@ function seedJourney() {
     });
     // Iqra appears on the current-staff board (added 25 Aug 2026) — reflect reality
     const iq = PEOPLE.find(p => p.id === 'jp_iqra' || p.name === 'Iqra Khaliq');
-    if (iq && iq.stage !== 'confirmed') { iq.stage = 'confirmed'; iq.legacy = true; iq.note = 'On LH — Staff Files Audit current staff since 25 Aug 2026; recruitment record retained below'; }
-    try { localStorage.setItem('lc_people_seeded_v2', '1'); } catch (e) {}
-    persistPeople();
+    let changed = PEOPLE.length !== window.__jpLastLen;
+    if (iq && iq.stage !== 'confirmed') { iq.stage = 'confirmed'; iq.legacy = true; iq.note = 'On LH — Staff Files Audit current staff since 25 Aug 2026; recruitment record retained below'; changed = true; }
+    if (changed) { window.__jpLastLen = PEOPLE.length; persistPeople(); }
   }
 }
 
