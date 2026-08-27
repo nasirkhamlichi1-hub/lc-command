@@ -3848,7 +3848,7 @@ const AUDIT_LIB = {
         ]},
       ]},
     ]},
-  staff: { name: 'Safer Recruitment Audit', icon: '📋', scale: 'met', subject: 'person',
+  staff: { name: 'Staff Files & Recruitment Audit', icon: '📋', scale: 'met', subject: 'person',
     desc: 'Schedule 3 / Reg 19 — audit one sampled file exactly as an inspector would',
     tpl: [
       { domain: 'The Schedule 3 file', sections: [
@@ -3873,6 +3873,12 @@ const AUDIT_LIB = {
           { c: 'SF12', t: 'Induction record: Care Certificate progress, policy sign-sheet, shadow shifts signed off before lone working' },
           { c: 'SF13', t: 'Training matrix entries current for this person — BLS annual, medication competency annual, Oliver McGowan, 3-yearly core' },
           { c: 'SF14', t: 'Supervision on cycle (quarterly minimum) and last appraisal within 12 months' },
+        ]},
+        { name: 'Identity — ongoing and on shift (Reg 19 continues after day one)', stds: [
+          { c: 'SF15', t: 'Photo ID badge issued; photo on file matches the person; badge worn on shift' },
+          { c: 'SF16', t: 'DBS within the 3-year renewal policy TODAY — renewal date tracked, not just the original check' },
+          { c: 'SF17', t: 'Any change notified (name, address, right-to-work expiry, criminal matters per policy) actioned on the file' },
+          { c: 'SF18', t: 'For sponsored workers: visa/CoS expiry tracked with reminder well ahead of expiry' },
         ]},
       ]},
     ]},
@@ -3929,6 +3935,45 @@ const AUDIT_LIB = {
           { c: 'PE5', t: 'First aid kit stocked and checked; accident book in use and legible' },
           { c: 'PE6', t: 'BCP present in the grab box AND every staff member on shift can say where it is (Wingate C09)' },
         ]},
+        { name: 'Grab bag — contents (Reg 12/17 continuity + fire evacuation duty)', stds: [
+          { c: 'GB1', t: 'Grab bag present, in a known accessible location, every staff member on shift can point to it' },
+          { c: 'GB2', t: 'Printed current BCP inside — matches the master version (IT outage, staffing loss, utilities, evacuation destination)' },
+          { c: 'GB3', t: 'One-page profile for EVERY current resident: photo, key needs, medication summary, GP/CPN contacts (Wingate F03 evidenced this)' },
+          { c: 'GB4', t: 'PEEP for every resident in the bag and matching their current mobility' },
+          { c: 'GB5', t: 'Emergency contact sheet: on-call manager, RM, landlord/RP, utilities, commissioners, out-of-hours numbers' },
+          { c: 'GB6', t: 'Practical kit: torch (working), high-vis, first aid, access/keys arrangement, charged power bank' },
+          { c: 'GB7', t: 'Checked monthly and after every use — signed, dated check log in the bag' },
+        ]},
+      ]},
+    ]},
+  spot: { name: 'Spot Check', icon: '🔦', scale: 'met', subject: 'house',
+    desc: 'The unannounced visit — arrive without warning, observe practice, ask staff the questions inspectors ask (Reg 17 governance)',
+    tpl: [
+      { domain: 'Unannounced visit', sections: [
+        { name: 'Arrival and staffing', stds: [
+          { c: 'SP1', t: 'Arrival date/time recorded; staff actually on duty match the rota for this moment' },
+          { c: 'SP2', t: 'ID badges worn by everyone on shift, including agency' },
+          { c: 'SP3', t: 'Any agency worker: profile on site (DBS, training, photo, RTW) verified BEFORE their shift started' },
+          { c: 'SP4', t: 'Staffing level at this moment matches assessed/commissioned hours' },
+        ]},
+        { name: 'Practice observed', stds: [
+          { c: 'SP5', t: 'Knocking, waiting, consent sought — dignity observable, not asserted (the Wingate B06 strength)' },
+          { c: 'SP6', t: 'Interactions warm; respectful language spoken and written' },
+          { c: 'SP7', t: 'IPC in practice: hand hygiene, PPE available and used, clean touchpoints' },
+          { c: 'SP8', t: 'If medication witnessed: MAR signed at the time, no secondary dispensing, meds room secure' },
+        ]},
+        { name: 'Staff questions — asked live, unprompted (the four Wingate fails)', stds: [
+          { c: 'SP9', t: 'Can this worker state the EXTERNAL safeguarding routes — LA, CQC, police? (C04)' },
+          { c: 'SP10', t: 'Can this worker describe the PRN protocol for a named resident without looking it up? (C07)' },
+          { c: 'SP11', t: 'Can this worker walk to the BCP/grab bag right now? (C09)' },
+          { c: 'SP12', t: 'Can this worker give the five MCA principles as they apply to daily work? (C02)' },
+        ]},
+        { name: 'Environment and records — right now', stds: [
+          { c: 'SP13', t: 'Environment clean and safe; no unreported defects; reported defects have a documented chase trail' },
+          { c: 'SP14', t: 'Daily notes current to TODAY and respectful in tone' },
+          { c: 'SP15', t: 'MAR current — no unexplained gaps up to this moment' },
+          { c: 'SP16', t: 'Fire exits clear now; alarm test log shows this week’s test' },
+        ]},
       ]},
     ]},
   pamms: { name: 'PAMMS Audit', icon: '📐', scale: 'pamms', subject: 'house',
@@ -3951,6 +3996,14 @@ const AUDIT_LIB = {
           { c: 'TP2', t: 'Dysphagia/IDDSI training before supporting meals where SALT guidance exists' },
           { c: 'TP3', t: 'PBS training current for staff supporting behaviours of concern' },
           { c: 'TP4', t: 'Epilepsy awareness where relevant to the people supported' },
+        ]},
+        { name: 'Observed competency — signed in practice, not just e-learning (Reg 18(2)(a) & Reg 12)', stds: [
+          { c: 'TC1', t: 'Care Certificate assessed IN PRACTICE for every new-to-care worker — observation records exist, not workbooks alone' },
+          { c: 'TC2', t: 'Medication: three observed administrations before solo working; annual observed reassessment; re-assessed after any error (the Wingate D05 baseline)' },
+          { c: 'TC3', t: 'Moving & handling practical competency signed by an assessor where people are physically assisted' },
+          { c: 'TC4', t: 'Lone-working competency signed off before the first lone shift' },
+          { c: 'TC5', t: 'Delegated healthcare tasks (buccal midazolam, PEG, catheter care etc.) signed off by an appropriate professional per person supported' },
+          { c: 'TC6', t: 'Competency framework mapped per role (First Step to Foundation); spot-check findings feed reassessment' },
         ]},
         { name: 'The system', stds: [
           { c: 'TS1', t: 'Training matrix live and RAG-rated; renewals visible 60 days ahead and chased' },
@@ -3989,7 +4042,7 @@ const AUDIT_LIB = {
 };
 
 const MA_HOUSES = [...HOMES, 'Wingate Walk'];
-const AUDIT_ORDER = ['cqc', 'pamms', 'premises', 'staff', 'training', 'la', 'med', 'careplan'];
+const AUDIT_ORDER = ['cqc', 'pamms', 'premises', 'staff', 'spot', 'training', 'la', 'med', 'careplan'];
 
 function maScale(fw) { const s = AUDIT_LIB[fw].scale; return s === 'cqc' ? SCALE_CQC : s === 'pamms' ? SCALE_PAMMS : SCALE_MET; }
 
