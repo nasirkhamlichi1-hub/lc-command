@@ -3051,6 +3051,12 @@ const REG_FRAMEWORK = {
       { id: 'cqc_o5', t: 'WELL-LED — A quality narrative the data backs up', d: 'A living quality account: what we found, what we changed, what improved — with numbers. This is the Outstanding spine', f: 'Quarterly', lvl: 'out' },
       { id: 'cqc_o6', t: 'External validation sought and used', d: 'Peer review, LA quality visits, Skills for Care benchmarking, satisfaction surveys with published you-said-we-did', f: 'Annual', lvl: 'out' },
     ]},
+    { name: 'Liberty, restriction & the technical traps', items: [
+      { id: 'cqc_dol', t: 'Deprivation of liberty: Court of Protection route — DoLS does NOT apply in supported living', d: 'Where the Cheshire West acid test is met (continuous supervision + not free to leave + lacks capacity), authorisation must come from the CoP (community DoL/Re X), applied for by the responsible LA. Staff saying “DoLS” about supported living reads as a knowledge gap to inspectors — train the distinction', f: 'Per person, reviewed', lvl: 'legal' },
+      { id: 'cqc_restr', t: 'Restrictive practice register with a reduction plan', d: 'Every restriction (locked items, monitoring, 1:1 lines of sight, PRN for behaviour) logged, least-restrictive justified, reviewed for reduction; STOMP/STAMP for psychotropics', f: 'Monthly review', lvl: 'good' },
+      { id: 'cqc_fee', t: 'CQC annual fee paid on time', d: 'Non-payment puts registration itself at risk — diarise it like insurance', f: 'Annual', lvl: 'legal' },
+      { id: 'cqc_rmdbs', t: 'RM and Nominated Individual: countersigned DBS, registration changes filed promptly', d: 'New RM applications, changes of NI, and location condition changes all have CQC filing routes — late filings are enforcement bait', f: 'On change', lvl: 'legal' },
+    ]},
   ]},
 
   house: { label: 'House compliance pack', icon: '🏠', perHouse: true, groups: [
@@ -3060,6 +3066,7 @@ const REG_FRAMEWORK = {
       { id: 'h_pat',  t: 'PAT testing — portable appliances', d: 'All provider-supplied appliances labelled', f: 'Annual', lvl: 'good' },
       { id: 'h_leg',  t: 'Legionella risk assessment + monitoring', d: 'ACOP L8; monthly temperature checks logged; little-used outlets flushed', f: '2-yearly RA · monthly checks', lvl: 'legal' },
       { id: 'h_lift', t: 'LOLER — hoists / lifting equipment (where present)', d: 'Thorough examination', f: '6-monthly', lvl: 'legal' },
+      { id: 'h_smoke', t: 'Smoke alarm every storey + CO alarm in every room with fixed combustion (2015/2022 Regs)', d: 'Working at tenancy start and repaired/replaced when reported — landlord duty; test on walkthroughs', f: 'Monthly test log', lvl: 'legal' },
     ]},
     { name: 'Fire safety', items: [
       { id: 'h_fra',   t: 'Fire Risk Assessment (RRO 2005)', d: 'Suitable and sufficient; actions closed with dates; review after any change or incident', f: 'Annual review', lvl: 'legal' },
@@ -3080,6 +3087,8 @@ const REG_FRAMEWORK = {
       { id: 'h_env',    t: 'Environmental risk assessment for the property', d: 'Windows (restrictors where assessed), hot surfaces, TMVs on baths, garden, ligature review where relevant', f: 'Annual', lvl: 'good' },
       { id: 'h_bcp',    t: 'Business continuity plan — house level', d: 'Loss of utilities, staffing failure, evacuation destination; staff know where it is', f: 'Annual', lvl: 'good' },
       { id: 'h_visits', t: 'Manager walkthrough / quality visit log', d: 'Monthly documented visit with actions; ties to Management Walkthroughs board', f: 'Monthly', lvl: 'out' },
+      { id: 'h_food', t: 'Food business registration with Environmental Health where staff prepare food', d: 'Free, no renewal, but required 28 days before operating — and brings a Food Hygiene Rating inspection; allergen information duty applies', f: 'Once per site', lvl: 'legal' },
+      { id: 'h_waste', t: 'Waste duty of care: transfer notes, meds disposal receipts, sharps route where present', d: 'Environmental Protection Act — waste carriers licensed, transfer notes kept 2 years; medication returns receipted', f: 'Per transfer', lvl: 'good' },
     ]},
   ]},
 
@@ -3176,6 +3185,44 @@ const REG_FRAMEWORK = {
       { id: 'la_ldnh', t: 'LeDeR notification path for LD deaths', d: 'Every death of a person with LD notified to LeDeR in addition to CQC', f: 'Per event', lvl: 'legal' },
       { id: 'la_qm',   t: 'Standing quality relationship with both councils', d: 'Named quality officer contact; attend provider forums; share good news not just problems', f: 'Quarterly', lvl: 'out' },
       { id: 'la_hb',   t: 'Housing Benefit/exempt accommodation evidence pack per home', d: 'Intensive housing management schedule, landlord status evidence — ties to HB & SMI Claims board', f: 'Per home', lvl: 'legal' },
+    ]},
+  ]},
+
+  data: { label: 'Data & Information Governance', icon: '🔐', groups: [
+    { name: 'UK GDPR & ICO — the legal spine', items: [
+      { id: 'dg_ico',  t: 'ICO registration current — the Data Protection Fee is paid', d: 'A legal requirement for every controller; lapsing brings monetary penalties and looks terrible in any inspection. Diarise the renewal', f: 'Annual', lvl: 'legal' },
+      { id: 'dg_lead', t: 'A named data protection lead (DPO where required) with the role written down', d: 'Someone owns breaches, DSARs and advice — in a small provider this is likely you; name it formally', f: 'On change', lvl: 'legal' },
+      { id: 'dg_priv', t: 'Privacy notices for residents (accessible format) and for staff', d: 'What is collected, why, lawful basis (care of health/social care, vital interests), who it is shared with, retention. Easy-read version for the people supported', f: 'Annual review', lvl: 'legal' },
+      { id: 'dg_dsar', t: 'DSAR process that can hit the one-month statutory clock', d: 'Requests can come from residents, families, dismissed staff. Know the process, the exemptions (third-party data, serious-harm), and who redacts', f: 'Per request', lvl: 'legal' },
+      { id: 'dg_breach', t: 'Breach process with the 72-hour ICO clock understood', d: 'Register of ALL incidents (even unreported ones); assessment of risk to individuals; ICO notification within 72 hours where required; affected people told where high risk', f: 'Per event', lvl: 'legal' },
+      { id: 'dg_ret',  t: 'Retention schedule applied — care records, staff files, recruitment, finance', d: 'Care records commonly 8 years from end of care (children: to 25); staff files 6 years post-employment; unsuccessful applicants 6-12 months. Destruction logged', f: 'Annual', lvl: 'legal' },
+    ]},
+    { name: 'Security & assurance', items: [
+      { id: 'dg_sec',  t: 'Device and access security: PCS/mCare accounts, phones, laptops', d: 'Individual logins (no sharing), leavers deactivated same day, phones with care apps secured, MFA where available', f: 'Monthly leaver check', lvl: 'legal' },
+      { id: 'dg_dspt', t: 'DSPT (Data Security & Protection Toolkit) at Standards Met', d: 'Increasingly a contract condition and needed for NHSmail/shared records. Annual self-assessment — commissioners ask', f: 'Annual (June)', lvl: 'good' },
+      { id: 'dg_share', t: 'Data sharing with LAs/health under written agreements or documented lawful basis', d: 'Referral packs, safeguarding reports, commissioner returns — know the basis for each flow', f: 'On change', lvl: 'good' },
+      { id: 'dg_cctv', t: 'CCTV/monitoring (if any): signage, policy, DPIA', d: 'Any camera or monitoring tech in a home needs a documented DPIA, resident involvement, and CQC surveillance guidance followed', f: 'If used', lvl: 'legal' },
+    ]},
+  ]},
+
+  work: { label: 'Workforce & Employment Law', icon: '⚖', groups: [
+    { name: 'The traps with penalties attached', items: [
+      { id: 'wk_rtw',  t: 'Right-to-work statutory excuse held for EVERY worker', d: 'Civil penalties now up to £60,000 per illegal worker. Compliant check BEFORE day one, copy retained, follow-up before any visa expiry', f: 'Pre-start + expiry tracked', lvl: 'legal' },
+      { id: 'wk_spon', t: 'Sponsor licence duties (if sponsoring): 10-day reporting, Appendix D records, genuine roles', d: 'Non-starters, absences, role/salary/location changes reported within 10 working days; full right-to-work + contact records kept; sponsorship costs must NOT be passed to the worker (2025 rules). Home Office visits are unannounced', f: 'Continuous', lvl: 'legal' },
+      { id: 'wk_nmw',  t: 'National Minimum Wage compliance including sleep-ins and travel time', d: 'Sleep-ins: Mencap ruling means NMW applies when awake for work; waking nights fully payable; travel between calls counts. HMRC names and fines', f: 'Per pay run', lvl: 'legal' },
+      { id: 'wk_wtr',  t: 'Working Time: 48-hour average, opt-outs signed, rest breaks, night-worker health assessments', d: 'Free health assessment offered to night workers before starting nights and repeated; records kept; 11-hour daily rest managed across rotas', f: 'Continuous', lvl: 'legal' },
+      { id: 'wk_pen',  t: 'Pension auto-enrolment running with declarations to TPR on time', d: 'Re-enrolment every 3 years; declaration of compliance; contributions correct', f: '3-yearly + per run', lvl: 'legal' },
+      { id: 'wk_el',   t: 'Employer’s Liability insurance £5m minimum, certificate available to staff', d: 'A legal requirement with daily fines for gaps; display or make electronically available', f: 'Annual', lvl: 'legal' },
+    ]},
+    { name: 'Health & safety as an employer', items: [
+      { id: 'wk_pol',  t: 'Written H&S policy (5+ employees) signed and current; law poster displayed or leaflets given', d: 'HSWA s.2(3) — a written policy, organisation and arrangements; reviewed annually', f: 'Annual', lvl: 'legal' },
+      { id: 'wk_riddor', t: 'RIDDOR reporting: specified injuries, over-7-day absences, dangerous occurrences', d: 'Legal duty to report to HSE — separate from CQC and commissioner reporting. One incident can require all three notifications; check every accident against RIDDOR criteria', f: 'Per event', lvl: 'legal' },
+      { id: 'wk_lone', t: 'Lone-working risk assessment and system (check-ins, escalation)', d: 'Management Regs duty — especially waking nights and community support', f: 'Annual', lvl: 'legal' },
+      { id: 'wk_stress', t: 'Work-related stress and violence risk assessments with controls', d: 'HSE Management Standards; debriefs after incidents; occupational health route', f: 'Annual', lvl: 'good' },
+    ]},
+    { name: 'Safeguarding duties as an employer', items: [
+      { id: 'wk_dbsref', t: 'DBS REFERRAL duty when someone is removed for harm — it is a criminal offence not to refer', d: 'Safeguarding Vulnerable Groups Act: if you dismiss (or would have dismissed) someone for harming or risking harm to an adult at risk, referral to the DBS is mandatory, plus LADO/PiPoT route with the LA', f: 'Per event', lvl: 'legal' },
+      { id: 'wk_alleg', t: 'Allegations-against-staff procedure: suspension decisions, PiPoT, references given honestly', d: 'A documented route that protects residents AND treats staff fairly; never a settlement that hides a safeguarding matter', f: 'Per event', lvl: 'legal' },
     ]},
   ]},
 };
@@ -3919,6 +3966,7 @@ const AUDIT_LIB = {
           { c: 'PC2', t: 'EICR satisfactory and in date; C1/C2 remedials evidenced complete' },
           { c: 'PC3', t: 'Legionella RA current; monthly water temperatures logged; unused outlets flushed' },
           { c: 'PC4', t: 'PAT testing current on provider appliances' },
+          { c: 'PC5', t: 'Smoke alarm on every storey + CO alarm at every fixed combustion appliance — tested this month, log signed' },
         ]},
         { name: 'Fire safety', stds: [
           { c: 'PF1', t: 'Fire Risk Assessment current, reviewed after change, every action closed with a date' },
