@@ -4614,6 +4614,68 @@ const JOURNEY_PHASES = [
   ]},
 ];
 
+const TRAIN_MODULES = [
+  { id: 'e_sg',   t: 'Safeguarding adults', cy: 36, core: true },
+  { id: 'e_fire', t: 'Fire safety', cy: 36, core: true },
+  { id: 'e_hs',   t: 'Health & safety', cy: 36, core: true },
+  { id: 'e_ipc',  t: 'Infection prevention & control', cy: 36, core: true },
+  { id: 'e_mh',   t: 'Moving & handling', cy: 36, core: true },
+  { id: 'e_bls',  t: 'Basic life support', cy: 12, core: true },
+  { id: 'e_medc', t: 'Medication competency — observed', cy: 12, core: true },
+  { id: 'e_food', t: 'Food hygiene', cy: 36, core: true },
+  { id: 'e_omg',  t: 'Oliver McGowan LD & autism (tiered)', cy: null, core: true },
+  { id: 'e_mca',  t: 'MCA & DoLS / community DoL awareness', cy: 36, core: true },
+  { id: 'e_fa',   t: 'First aid', cy: 36, core: true },
+  { id: 'e_pbs',  t: 'PBS — where supporting behaviours of concern', cy: 36, core: false },
+  { id: 'e_epi',  t: 'Epilepsy awareness — where relevant', cy: 36, core: false },
+  { id: 'e_dys',  t: 'Dysphagia / IDDSI — where SALT guidance exists', cy: 36, core: false },
+  { id: 'e_buc',  t: 'Buccal midazolam competency — where prescribed', cy: 12, core: false },
+];
+function addMonths(iso, m) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setMonth(d.getMonth() + m);
+  return d.toISOString().slice(0, 10);
+}
+function trainCurrency(person, mod) {
+  const rec = person.training?.[mod.id];
+  if (rec?.na) return { k: 'na', label: 'n/a', color: 'var(--t4)' };
+  if (!rec?.date) return { k: 'nodate', label: '⛔ no date', color: 'var(--red)' };
+  if (mod.cy === null) return { k: 'current', label: '✓ ' + fD(rec.date), color: 'var(--grn)', renew: null };
+  const renew = addMonths(rec.date, mod.cy);
+  const d = daysUntil(renew);
+  if (d === null || d < 0) return { k: 'expired', label: '⛔ expired ' + fD(renew), color: 'var(--red)', renew };
+  if (d <= 60) return { k: 'due', label: '🟠 renew by ' + fD(renew), color: 'var(--amb)', renew };
+  return { k: 'current', label: '✓ until ' + fD(renew), color: 'var(--grn)', renew };
+}
+function trainStats(person) {
+  let cur = 0, due = 0, bad = 0;
+  TRAIN_MODULES.filter(m => m.core).forEach(m => {
+    const s = trainCurrency(person, m).k;
+    if (s === 'current') cur++; else if (s === 'due') due++; else if (s !== 'na') bad++;
+  });
+  return { cur, due, bad };
+}
+function journeyTrainDate(pid, mid, title) {
+  const p = PEOPLE.find(x => x.id === pid); if (!p) return;
+  const rec = p.training?.[mid] || {};
+  openModal(esc(title), `
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);">Completed on (from the certificate)</label>
+    <input id="jtDate" type="date" value="${rec.date || ''}" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;margin:5px 0 11px;">
+    <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--t3);"><input id="jtNa" type="checkbox" ${rec.na ? 'checked' : ''}> Not applicable to this role/person</label>
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="saveJourneyTrainDate('${pid}','${mid}')">Save</button>
+  `);
+}
+function saveJourneyTrainDate(pid, mid) {
+  const p = PEOPLE.find(x => x.id === pid); if (!p) return;
+  if (!p.training) p.training = {};
+  const date = document.getElementById('jtDate')?.value || '';
+  const na = !!document.getElementById('jtNa')?.checked;
+  p.training[mid] = na ? { na: true } : (date ? { date } : {});
+  persistPeople(); closeModal(); render();
+}
+
 function journeySteps(stageKey) { return JOURNEY_PHASES.filter(p => p.stage === stageKey).flatMap(p => p.steps); }
 function stepDone(person, id) { const s = person.steps?.[id]; return s?.done || s?.na; }
 function stageProgress(person, stageKey) {
@@ -4698,7 +4760,8 @@ function deleteJourneyPerson(pid) {
 function journeySummaryLine() {
   const inflight = PEOPLE.filter(p => p.stage !== 'confirmed');
   const blocked = inflight.map(p => ({ p, prog: stageProgress(p, p.stage) })).filter(x => x.prog.total - x.prog.done > 0);
-  return `STAFF JOURNEY: ${inflight.length} in flight · ${PEOPLE.filter(p=>p.stage==='confirmed').length} confirmed. Outstanding: ${blocked.map(x => `${x.p.name} (${x.p.stage}: ${x.prog.total - x.prog.done} steps left${x.p.startDate ? ', starts ' + x.p.startDate : ''})`).join(' | ') || 'none'}`;
+  const tbad = PEOPLE.filter(p => p.stage === 'confirmed').reduce((a, p) => a + trainStats(p).bad, 0);
+  return `STAFF JOURNEY: ${inflight.length} in flight · ${PEOPLE.filter(p=>p.stage==='confirmed').length} confirmed · ${tbad} core training modules expired/undated across confirmed staff. Outstanding: ${blocked.map(x => `${x.p.name} (${x.p.stage}: ${x.prog.total - x.prog.done} steps left${x.p.startDate ? ', starts ' + x.p.startDate : ''})`).join(' | ') || 'none'}`;
 }
 
 // ═══ RENDER ═══
@@ -4727,7 +4790,7 @@ function renderJourneySky(m) {
     <div class="kpi bl"><div class="kpi-label">In flight</div><div class="kpi-val">${inflight.length}</div><div class="kpi-note">on the journey</div></div>
     <div class="kpi ${atRisk.length ? 'rd' : 'gr'}"><div class="kpi-label">Start-date risk</div><div class="kpi-val">${atRisk.length}</div><div class="kpi-note">starting ≤14d, gate locked</div></div>
     <div class="kpi am"><div class="kpi-label">Steps outstanding</div><div class="kpi-val">${totalOutstanding}</div><div class="kpi-note">across everyone</div></div>
-    <div class="kpi gr"><div class="kpi-label">Confirmed staff</div><div class="kpi-val">${confirmed.length}</div></div>
+    ${(function(){ const bad = confirmed.reduce((a, p) => a + trainStats(p).bad, 0); return `<div class="kpi ${bad ? 'rd' : 'gr'}"><div class="kpi-label">Training gaps</div><div class="kpi-val">${bad}</div><div class="kpi-note">expired / no date · ${confirmed.length} staff</div></div>`; })()}
   </div>
   <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;">
     <button class="btn btn-gold" onclick="addJourneyPerson()">+ New person</button>
@@ -4764,7 +4827,7 @@ function renderJourneySky(m) {
   <div class="card mt-4">
     <div class="card-h"><div class="card-t">🛡 Confirmed staff</div><div class="card-sub">${confirmed.length} — full record retained per person</div></div>
     <div class="card-body" style="display:flex;gap:7px;flex-wrap:wrap;">
-      ${confirmed.length ? confirmed.map(p => `<button class="btn btn-sec btn-sm" onclick="nav('induct',{jp:'${p.id}'})">${esc(p.name)} <span style="opacity:0.6;">· ${esc(p.house)}</span></button>`).join('') : '<span style="font-size:12px;color:var(--t4);">People appear here when their induction gate opens</span>'}
+      ${confirmed.length ? confirmed.map(p => { const ts = trainStats(p); return `<button class="btn btn-sec btn-sm" onclick="nav('induct',{jp:'${p.id}'})" style="position:relative;">${esc(p.name)}${p.house && p.house !== 'TBC' ? ` <span style="opacity:0.6;">· ${esc(p.house)}</span>` : ''}${ts.bad ? ` <span style="background:var(--red);color:white;border-radius:9px;padding:0 6px;font-size:9.5px;font-weight:800;">${ts.bad}</span>` : ts.due ? ` <span style="background:var(--amb);color:white;border-radius:9px;padding:0 6px;font-size:9.5px;font-weight:800;">${ts.due}</span>` : ' <span style="color:var(--grn);font-weight:800;">✓</span>'}</button>`; }).join('') : '<span style="font-size:12px;color:var(--t4);">People appear here when their induction gate opens</span>'}
     </div>
   </div>`;
 }
@@ -4799,7 +4862,7 @@ function renderJourneyWizard(m, p) {
   ${p.stage === 'confirmed' ? `<div class="card"><div class="card-body" style="text-align:center;padding:28px;">
       <div style="font-size:30px;">🛡</div>
       <div style="font-family:var(--serif);font-size:19px;margin:8px 0 4px;">Confirmed in post${p.entered_confirmed ? ' — ' + fD(p.entered_confirmed) : ''}</div>
-      <div style="font-size:12.5px;color:var(--t3);">Every gate passed with dates and evidence below. Ongoing training now lives on the Training Record.</div>
+      <div style="font-size:12.5px;color:var(--t3);">${p.legacy ? 'Existing staff member — recruitment and induction history pre-dates this tracker and lives in the staff file. The live obligation is the training record below.' : 'Every gate passed with dates and evidence below. The live obligation is now the training record.'}</div>
     </div></div>` :
   `<div class="card mb-4" style="border-color:${pr.pct === 100 ? 'var(--grn)' : 'var(--line)'};">
     <div class="card-body" style="display:flex;gap:16px;align-items:center;">
@@ -4837,7 +4900,23 @@ function renderJourneyWizard(m, p) {
         </div>`;
       }).join('')}
     </details>`;
-  }).join('')}`;
+  }).join('')}
+
+  <div class="card mb-3" style="border-color:var(--gold);">
+    <div class="card-h"><div class="card-t">📆 Ongoing mandatory training — renewal clocks</div>
+      ${(function(){ const ts = trainStats(p); return `<span class="pill ${ts.bad ? 'rd' : ts.due ? 'am' : 'gr'}" style="margin-left:auto;">${ts.cur} current · ${ts.due} due ≤60d · ${ts.bad} expired/no date</span>`; })()}
+    </div>
+    <div style="padding:8px 18px 4px;font-size:10.5px;color:var(--t4);">Dates come from certificates, never assumption — a module with no evidenced date counts as expired until the certificate date is entered. BLS and medication competency renew ANNUALLY; core modules 3-yearly.</div>
+    ${TRAIN_MODULES.map(mod => {
+      const cur = trainCurrency(p, mod);
+      return `<div style="padding:9px 18px;border-top:1px solid var(--line);display:flex;gap:11px;align-items:center;${cur.k === 'na' ? 'opacity:0.55;' : ''}">
+        <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${cur.color};flex-shrink:0;"></span>
+        <div style="flex:1;font-size:12.5px;font-weight:600;">${esc(mod.t)}${mod.core ? '' : ' <span style="font-size:9.5px;color:var(--t4);font-weight:600;">person-specific</span>'}</div>
+        <span style="font-size:11px;font-weight:700;color:${cur.color};">${cur.label}</span>
+        <button onclick="journeyTrainDate('${p.id}','${mod.id}','${esc(mod.t).replace(/'/g, '&#39;')}')" style="height:22px;padding:0 8px;border-radius:6px;border:1.5px solid var(--line2);background:white;color:var(--t4);font-size:10.5px;cursor:pointer;">✎ date</button>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 
 // Factual seed from the live Monday candidates board
@@ -4855,6 +4934,40 @@ function seedJourney() {
     persistPeople();
   }
   try { localStorage.setItem('lc_people_seeded', '1'); } catch (e) {}
+
+  // v2: the full current-staff roster from LH — Staff Files Audit (read 27 Aug 2026).
+  // Existing staff join as CONFIRMED with legacy flag; training dates start EMPTY —
+  // no date is evidenced until entered from a certificate.
+  if (!localStorage.getItem('lc_people_seeded_v2')) {
+    const roster = [
+      ['3068288994','Barrie Yakuba'],['3068324935','Ali Raza'],['3068352878','Algony Gotami'],
+      ['3068352508','Eghosa Omoruyi'],['3068288871','Augustina Akrasi'],['3068324992','Gerrad Yeboah'],
+      ['3068352347','Hawwaa Zabir'],['3068288750','Esther Kubi'],['3068324864','Bilal Nizami'],
+      ['3068352367','Jazzmin Brooks'],['3068324917','Collins Ofori'],['3068288751','Doreen Awuttey'],
+      ['3068324918','Jennifer Gardner'],['3068324936','Francis Ndawambi'],['3068352879','Adries Khan'],
+      ['3068288623','Henry Boakye'],['3068352510','Evans Okyei Badu'],['3068352822','Elvis Ampaabeng'],
+      ['3068339837','Samantha Mofolo'],['3068340485','Laura Thompson'],['3068291888','Richard Twumasi'],
+      ['3068292102','Joanne Davies'],['3068340486','Kelly Johnson'],['3068263526','Kashaf Zubair'],
+      ['3068339774','Samantha Henry'],['3068276136','Josephine Kumi'],['3068292091','Raymond Undi'],
+      ['3068275856','Lydia Fosu'],['3068276024','Kelly Bennett'],['3068292103','Samuel Boamah'],
+      ['3068340487','Shaheen Sakhi'],['3068339961','Sehrish Adrees'],['3068263527','Sarah Pullen'],
+      ['3068276138','Sawera Naushad'],['3068275713','Lynne Strode'],['3068340491','Victor Okyere'],
+      ['3068291897','Takawira Magata'],['3068291880','Uzair Zubair'],['3068292862','Sincerity Hove'],
+      ['3068339821','Sheila Bruce'],['3068340492','Yasmine Amponsah'],['3090983084','Joan Mungereza'],
+      ['3188215540','Sushmita Mehta'],
+    ];
+    roster.forEach(([mid, name]) => {
+      if (!PEOPLE.some(p => p.name === name || p.mondayId === mid)) {
+        PEOPLE.push({ id: 'jp_m' + mid, name, role: '—', house: 'TBC', stage: 'confirmed',
+          legacy: true, mondayId: mid, steps: {}, training: {}, ts: new Date().toISOString() });
+      }
+    });
+    // Iqra appears on the current-staff board (added 25 Aug 2026) — reflect reality
+    const iq = PEOPLE.find(p => p.id === 'jp_iqra' || p.name === 'Iqra Khaliq');
+    if (iq && iq.stage !== 'confirmed') { iq.stage = 'confirmed'; iq.legacy = true; iq.note = 'On LH — Staff Files Audit current staff since 25 Aug 2026; recruitment record retained below'; }
+    try { localStorage.setItem('lc_people_seeded_v2', '1'); } catch (e) {}
+    persistPeople();
+  }
 }
 
 // ── BOOT ──────────────────────────────────────────────────────
