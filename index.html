@@ -313,7 +313,7 @@ main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
     </button>
     <button class="nav-btn" data-pg="induct" onclick="nav('induct')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-      Inductions
+      Staff Journey
     </button>
     <div class="sb-label">System</div>
     <button class="nav-btn" data-pg="connect" onclick="nav('connect')">
@@ -1988,12 +1988,6 @@ function renderRecruit(m) {
   pipelineView(items, 'candidates', 'Connect Monday.com and sync to load the candidate pipeline');
 }
 
-function renderInduct(m) {
-  const items = BOARD_CACHE.onboarding?.items || [];
-  m.innerHTML = bc('People', 'Induction <em>Tracker</em>', `LH — Staff Onboarding · ${items.length} in progress`) +
-  pipelineView(items, 'onboarding', 'Connect Monday.com and sync to load onboarding');
-}
-
 function pipelineView(items, boardKey, emptyMsg) {
   if (!items.length) return `<div class="card"><div class="empt">${emptyMsg}</div></div>`;
   // Group by board group (stage)
@@ -2163,7 +2157,7 @@ function syncStatePush() {
   clearTimeout(_statePushTimer);
   _statePushTimer = setTimeout(async () => {
     try {
-      const snapshot = { tasks: MY_TASKS, chat: CHAT.slice(-60), risks: RISK_REGISTER.slice(0, 100), drafts: DRAFTS.slice(0, 20), syncQueue: SYNC_QUEUE.slice(0, 40), regChecks: REG_CHECKS, regHouse: REG_HOUSE, pammsAudits: PAMMS_AUDITS, maAudits: MA_AUDITS };
+      const snapshot = { tasks: MY_TASKS, chat: CHAT.slice(-60), risks: RISK_REGISTER.slice(0, 100), drafts: DRAFTS.slice(0, 20), syncQueue: SYNC_QUEUE.slice(0, 40), regChecks: REG_CHECKS, regHouse: REG_HOUSE, pammsAudits: PAMMS_AUDITS, maAudits: MA_AUDITS, people: PEOPLE };
       await fetch(BACKEND_BASE + '/state', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-lc-auth': authCode() },
@@ -2191,6 +2185,7 @@ async function syncStatePull() {
       if (d.state.regHouse) { REG_HOUSE = d.state.regHouse; }
       if (Array.isArray(d.state.pammsAudits) && d.state.pammsAudits.length) { PAMMS_AUDITS = d.state.pammsAudits; try { localStorage.setItem('lc_pamms_audits', JSON.stringify(PAMMS_AUDITS)); } catch (e) {} }
       if (Array.isArray(d.state.maAudits) && d.state.maAudits.length) { MA_AUDITS = d.state.maAudits; try { localStorage.setItem('lc_mock_audits', JSON.stringify(MA_AUDITS)); } catch (e) {} }
+      if (Array.isArray(d.state.people) && d.state.people.length) { PEOPLE = d.state.people; try { localStorage.setItem('lc_people', JSON.stringify(PEOPLE)); } catch (e) {} }
       try { localStorage.setItem('lc_reg_checks', JSON.stringify(REG_CHECKS)); localStorage.setItem('lc_reg_house', JSON.stringify(REG_HOUSE)); } catch (e) {}
       localStorage.setItem('lc_state_ts', d.state.updatedAt);
       persistChat(); persist(); updateBadges(); render();
@@ -2300,6 +2295,7 @@ CERTIFICATES (${certs.length} tracked, ${certBad.length} at risk): ${certBad.sli
 SYNC QUEUE: ${pendingSync.length} pending pushes to Monday
 ${typeof oversightSummaryLine === 'function' ? oversightSummaryLine() : ''}
 ${typeof regulatorySummaryLine === 'function' ? regulatorySummaryLine() : ''}
+${typeof journeySummaryLine === 'function' && PEOPLE.length ? journeySummaryLine() : ''}
 CONNECTIONS: Gmail ${CONN.gmailToken ? 'LIVE (' + (CONN.gmailEmail || '') + ')' : 'offline'} · Monday ${CONN.mondayToken ? 'LIVE' : 'offline'}`;
 }
 
@@ -2358,7 +2354,7 @@ const AI_TOOLS = [
     name: 'get_business_data',
     description: 'Pull detailed live data beyond the snapshot: full email list, all compliance items, every certificate, all tasks, risk register.',
     input_schema: { type: 'object', properties: {
-      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts', 'oversight', 'regulatory', 'pamms_audits', 'mock_audits'] },
+      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts', 'oversight', 'regulatory', 'pamms_audits', 'mock_audits', 'staff_journey'] },
     }, required: ['area'] },
   },
 ];
@@ -2411,6 +2407,13 @@ async function executeAITool(name, input) {
       if (a === 'risks') return { ok: true, msg: JSON.stringify(RISK_REGISTER.filter(r => !r.resolved)) };
       if (a === 'drafts') return { ok: true, msg: JSON.stringify(DRAFTS.slice(0, 10).map(d => ({ to: d.to, subject: d.subject, status: d.status }))) };
       if (a === 'oversight') { const o = computeOversight(); return { ok: true, msg: JSON.stringify({ lastSync: OVERSIGHT_CACHE.lastSync, totals: o.totals, boards: o.boards.map(b => ({ name: b.name, score: b.score, open: b.open, exceptions: b.exceptions.slice(0, 12) })) }) }; }
+      if (a === 'staff_journey') {
+        return { ok: true, msg: JSON.stringify(PEOPLE.map(p => {
+          const pr = stageProgress(p, p.stage);
+          const remaining = journeySteps(p.stage).filter(s => !stepDone(p, s.id)).map(s => s.t);
+          return { name: p.name, role: p.role, house: p.house, stage: p.stage, startDate: p.startDate, progress: pr.done + '/' + pr.total, gateOpen: pr.pct === 100, remaining };
+        })) };
+      }
       if (a === 'mock_audits') {
         return { ok: true, msg: JSON.stringify(MA_AUDITS.map(au => {
           const ov = maOverall(au);
@@ -4551,6 +4554,307 @@ function assessorLens(fw, st) {
     return '';
   }
   return '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STAFF JOURNEY — recruitment → checks → training → induction → staff
+// Wizard flow with hard gates + a sky view of everyone at once
+// ═══════════════════════════════════════════════════════════════
+let PEOPLE = JSON.parse(localStorage.getItem('lc_people') || '[]');
+function persistPeople() {
+  try { localStorage.setItem('lc_people', JSON.stringify(PEOPLE)); } catch (e) {}
+  if (typeof syncStatePush === 'function') syncStatePush();
+}
+
+const JOURNEY_STAGES = [
+  { key: 'recruit',   label: 'Recruitment',        icon: '🎯' },
+  { key: 'prestart',  label: 'Checks & pre-start training', icon: '🔒' },
+  { key: 'induction', label: 'Induction (12 weeks)', icon: '🎓' },
+  { key: 'confirmed', label: 'Confirmed staff',    icon: '🛡' },
+];
+
+const JOURNEY_PHASES = [
+  { key: 'A', stage: 'recruit', name: 'Recruitment', steps: [
+    { id: 'a_app',   t: 'Application received & screened' },
+    { id: 'a_int',   t: 'Interview completed & scored' },
+    { id: 'a_dec',   t: 'Decision — recommend to hire' },
+    { id: 'a_offer', t: 'Offer made & accepted' },
+  ]},
+  { key: 'B', stage: 'prestart', name: 'Pre-employment checks — Schedule 3, every one before day one', steps: [
+    { id: 'b_dbs',  t: 'Enhanced DBS + Adults’ Barred List', d: 'Record the ISSUE date — the 3-year renewal clock starts here' },
+    { id: 'b_rtw',  t: 'Right to work verified', d: 'Record visa/document EXPIRY where time-limited' },
+    { id: 'b_ref1', t: 'Reference 1 verified — dates match application' },
+    { id: 'b_ref2', t: 'Reference 2 verified — most recent employer' },
+    { id: 'b_hist', t: 'Full history — every gap explored & explanation recorded' },
+    { id: 'b_id',   t: 'Photo ID + proof of address certified' },
+    { id: 'b_qual', t: 'Qualification certificates seen & copied' },
+    { id: 'b_health', t: 'Health declaration + adjustments considered' },
+    { id: 'b_con',  t: 'Contract + job description signed' },
+  ]},
+  { key: 'C', stage: 'prestart', name: 'Pre-start mandatory training — before the first unsupervised shift', steps: [
+    { id: 'c_sg',   t: 'Safeguarding adults' },
+    { id: 'c_fire', t: 'Fire safety' },
+    { id: 'c_hs',   t: 'Health & safety' },
+    { id: 'c_ipc',  t: 'Infection prevention & control' },
+    { id: 'c_mh',   t: 'Moving & handling' },
+    { id: 'c_bls',  t: 'Basic life support', d: 'ANNUAL renewal — clock starts today' },
+    { id: 'c_med',  t: 'Medication training (theory)' },
+    { id: 'c_food', t: 'Food hygiene (role-dependent — mark n/a if not)' },
+    { id: 'c_omg',  t: 'Oliver McGowan LD & autism — correct tier' },
+  ]},
+  { key: 'D', stage: 'induction', name: 'Induction — the 12-week window', steps: [
+    { id: 'd_cc1',  t: 'Care Certificate started (≤ 2 weeks)' },
+    { id: 'd_cc2',  t: 'Care Certificate completed (≤ 12 weeks)' },
+    { id: 'd_pol',  t: 'Policy sign-sheet (safeguarding, whistleblowing, medication, conduct)' },
+    { id: 'd_shad', t: 'Shadow shifts signed off — BEFORE lone working' },
+    { id: 'd_med3', t: 'Three observed medication administrations before solo' },
+    { id: 'd_lone', t: 'Lone-working competency signed' },
+    { id: 'd_p6',   t: 'Week-6 probation review' },
+    { id: 'd_p12',  t: 'Week-12 probation review + outcome letter' },
+  ]},
+];
+
+function journeySteps(stageKey) { return JOURNEY_PHASES.filter(p => p.stage === stageKey).flatMap(p => p.steps); }
+function stepDone(person, id) { const s = person.steps?.[id]; return s?.done || s?.na; }
+function stageProgress(person, stageKey) {
+  const steps = journeySteps(stageKey);
+  if (!steps.length) return { done: 0, total: 0, pct: 100 };
+  const done = steps.filter(s => stepDone(person, s.id)).length;
+  return { done, total: steps.length, pct: Math.round(done / steps.length * 100) };
+}
+function stageIndex(k) { return JOURNEY_STAGES.findIndex(s => s.key === k); }
+function gateOpen(person) { return stageProgress(person, person.stage).pct === 100; }
+
+function addJourneyPerson() {
+  openModal('New person — start the journey', `
+    <input id="jpName" placeholder="Full name" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;margin-bottom:9px;">
+    <input id="jpRole" placeholder="Role (e.g. Support Worker FT)" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;margin-bottom:9px;">
+    <select id="jpHouse" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;background:white;margin-bottom:9px;">
+      ${[...MA_HOUSES, 'Head office', 'TBC'].map(h => `<option>${h}</option>`).join('')}
+    </select>
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);">Target start date</label>
+    <input id="jpStart" type="date" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;">
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="createJourneyPerson()">Begin journey →</button>
+  `);
+}
+function createJourneyPerson() {
+  const name = document.getElementById('jpName')?.value?.trim();
+  if (!name) { toast('Name needed'); return; }
+  const p = { id: 'jp_' + Date.now(), name, role: document.getElementById('jpRole')?.value?.trim() || '—',
+    house: document.getElementById('jpHouse')?.value || 'TBC', startDate: document.getElementById('jpStart')?.value || null,
+    stage: 'recruit', steps: {}, ts: new Date().toISOString() };
+  PEOPLE.unshift(p); persistPeople(); closeModal(); nav('induct', { jp: p.id });
+}
+
+function toggleJourneyStep(pid, sid) {
+  const p = PEOPLE.find(x => x.id === pid); if (!p) return;
+  if (!p.steps[sid]) p.steps[sid] = {};
+  const s = p.steps[sid];
+  if (!s.done && !s.na) { s.done = true; s.dt = new Date().toISOString().slice(0, 10); }
+  else if (s.done) { s.done = false; s.na = true; }
+  else { delete p.steps[sid]; }
+  persistPeople(); render();
+}
+
+function journeyStepNote(pid, sid, title) {
+  const p = PEOPLE.find(x => x.id === pid); if (!p) return;
+  const s = p.steps[sid] || {};
+  openModal(esc(title), `
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);">Key date (DBS issue / expiry / completion)</label>
+    <input id="jsDate" type="date" value="${s.keyDate || ''}" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;margin:5px 0 11px;">
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);">Evidence note</label>
+    <textarea id="jsNote" style="width:100%;min-height:90px;padding:10px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:12.5px;margin-top:5px;">${esc(s.note || '')}</textarea>
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="saveJourneyStepNote('${pid}','${sid}')">Save</button>
+  `);
+}
+function saveJourneyStepNote(pid, sid) {
+  const p = PEOPLE.find(x => x.id === pid); if (!p) return;
+  if (!p.steps[sid]) p.steps[sid] = {};
+  p.steps[sid].keyDate = document.getElementById('jsDate')?.value || '';
+  p.steps[sid].note = document.getElementById('jsNote')?.value || '';
+  persistPeople(); closeModal(); render();
+}
+
+function advanceJourney(pid) {
+  const p = PEOPLE.find(x => x.id === pid); if (!p) return;
+  if (!gateOpen(p)) { toast('🔒 The gate is locked — complete every step first'); return; }
+  const i = stageIndex(p.stage);
+  if (i < JOURNEY_STAGES.length - 1) {
+    p.stage = JOURNEY_STAGES[i + 1].key;
+    p['entered_' + p.stage] = new Date().toISOString().slice(0, 10);
+    persistPeople(); render();
+    toast(p.stage === 'prestart' ? 'Into checks & pre-start training' : p.stage === 'induction' ? '✅ CLEARED TO START — induction begins' : '🛡 Confirmed in post — welcome to the team');
+  }
+}
+function deleteJourneyPerson(pid) {
+  if (!confirm('Remove this person from the journey tracker?')) return;
+  PEOPLE = PEOPLE.filter(x => x.id !== pid); persistPeople(); nav('induct');
+}
+
+function journeySummaryLine() {
+  const inflight = PEOPLE.filter(p => p.stage !== 'confirmed');
+  const blocked = inflight.map(p => ({ p, prog: stageProgress(p, p.stage) })).filter(x => x.prog.total - x.prog.done > 0);
+  return `STAFF JOURNEY: ${inflight.length} in flight · ${PEOPLE.filter(p=>p.stage==='confirmed').length} confirmed. Outstanding: ${blocked.map(x => `${x.p.name} (${x.p.stage}: ${x.prog.total - x.prog.done} steps left${x.p.startDate ? ', starts ' + x.p.startDate : ''})`).join(' | ') || 'none'}`;
+}
+
+// ═══ RENDER ═══
+function renderInduct(m) {
+  seedJourney();
+  const pid = curState.jp;
+  const person = PEOPLE.find(p => p.id === pid);
+  if (person) { renderJourneyWizard(m, person); return; }
+  renderJourneySky(m);
+}
+
+function ringDiv(pct, size, color) {
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;background:conic-gradient(${color} ${pct * 3.6}deg, var(--line) 0);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+    <div style="width:${size - 8}px;height:${size - 8}px;border-radius:50%;background:white;display:flex;align-items:center;justify-content:center;font-size:${size > 40 ? 12 : 9.5}px;font-weight:800;color:var(--t2);">${pct}%</div></div>`;
+}
+
+function renderJourneySky(m) {
+  const inflight = PEOPLE.filter(p => p.stage !== 'confirmed');
+  const confirmed = PEOPLE.filter(p => p.stage === 'confirmed');
+  const soonStarts = inflight.filter(p => p.startDate && daysUntil(p.startDate) !== null && daysUntil(p.startDate) <= 14 && daysUntil(p.startDate) >= 0);
+  const atRisk = inflight.filter(p => p.startDate && daysUntil(p.startDate) !== null && daysUntil(p.startDate) <= 14 && !gateOpen(p) && p.stage === 'prestart');
+  const totalOutstanding = inflight.reduce((a, p) => { const pr = stageProgress(p, p.stage); return a + (pr.total - pr.done); }, 0);
+
+  m.innerHTML = bc('People', 'Staff <em>Journey</em>', 'Recruitment → checks → training → induction → confirmed. Gates locked until every step is done.') +
+  `<div class="grid-4 mb-4">
+    <div class="kpi bl"><div class="kpi-label">In flight</div><div class="kpi-val">${inflight.length}</div><div class="kpi-note">on the journey</div></div>
+    <div class="kpi ${atRisk.length ? 'rd' : 'gr'}"><div class="kpi-label">Start-date risk</div><div class="kpi-val">${atRisk.length}</div><div class="kpi-note">starting ≤14d, gate locked</div></div>
+    <div class="kpi am"><div class="kpi-label">Steps outstanding</div><div class="kpi-val">${totalOutstanding}</div><div class="kpi-note">across everyone</div></div>
+    <div class="kpi gr"><div class="kpi-label">Confirmed staff</div><div class="kpi-val">${confirmed.length}</div></div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;">
+    <button class="btn btn-gold" onclick="addJourneyPerson()">+ New person</button>
+    <div style="flex:1;"></div>
+    ${CONN.aiKey && inflight.length ? `<button class="btn btn-sec btn-sm" onclick="askDock('Look at the staff journey: who is blocked, whose start date is at risk, and exactly what should we chase today?')">✦ Who do we chase?</button>` : ''}
+  </div>
+  <div style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px;">
+    ${JOURNEY_STAGES.slice(0, 3).map(st => {
+      const list = PEOPLE.filter(p => p.stage === st.key);
+      return `<div style="min-width:270px;flex:1;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);padding:0 4px 9px;display:flex;justify-content:space-between;">
+          <span>${st.icon} ${st.label}</span><span>${list.length}</span></div>
+        ${list.map(p => {
+          const pr = stageProgress(p, p.stage);
+          const du = p.startDate ? daysUntil(p.startDate) : null;
+          const left = pr.total - pr.done;
+          return `<div onclick="nav('induct',{jp:'${p.id}'})" style="background:white;border:1.5px solid var(--line);border-radius:var(--r2);padding:13px 14px;margin-bottom:9px;cursor:pointer;transition:border 0.15s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--line)'">
+            <div style="display:flex;gap:11px;align-items:center;">
+              ${ringDiv(pr.pct, 44, pr.pct === 100 ? 'var(--grn)' : left && du !== null && du <= 14 ? 'var(--red)' : 'var(--gold)')}
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</div>
+                <div style="font-size:10.5px;color:var(--t3);">${esc(p.role)} · ${esc(p.house)}</div>
+              </div>
+            </div>
+            <div style="display:flex;gap:5px;margin-top:9px;flex-wrap:wrap;">
+              ${pr.pct === 100 ? '<span class="pill gr">✓ gate open — advance</span>' : `<span class="pill ${du !== null && du <= 14 ? 'rd' : 'am'}">${left} step${left===1?'':'s'} to the gate</span>`}
+              ${du !== null ? `<span class="pill ${du < 0 ? 'rd' : du <= 14 ? 'am' : 'gy'}">${du < 0 ? Math.abs(du) + 'd past start!' : 'starts in ' + du + 'd'}</span>` : ''}
+            </div>
+          </div>`;
+        }).join('') || '<div style="font-size:11.5px;color:var(--t4);padding:14px 6px;">Nobody at this stage</div>'}
+      </div>`;
+    }).join('')}
+  </div>
+  <div class="card mt-4">
+    <div class="card-h"><div class="card-t">🛡 Confirmed staff</div><div class="card-sub">${confirmed.length} — full record retained per person</div></div>
+    <div class="card-body" style="display:flex;gap:7px;flex-wrap:wrap;">
+      ${confirmed.length ? confirmed.map(p => `<button class="btn btn-sec btn-sm" onclick="nav('induct',{jp:'${p.id}'})">${esc(p.name)} <span style="opacity:0.6;">· ${esc(p.house)}</span></button>`).join('') : '<span style="font-size:12px;color:var(--t4);">People appear here when their induction gate opens</span>'}
+    </div>
+  </div>`;
+}
+
+function renderJourneyWizard(m, p) {
+  const idx = stageIndex(p.stage);
+  const phases = JOURNEY_PHASES.filter(ph => ph.stage === p.stage);
+  const pr = stageProgress(p, p.stage);
+  const du = p.startDate ? daysUntil(p.startDate) : null;
+
+  m.innerHTML = bc('People', `${esc(p.name)}`, `${esc(p.role)} · ${esc(p.house)}${p.startDate ? ' · starts ' + fD(p.startDate) + (du !== null ? ` (${du < 0 ? Math.abs(du) + ' days ago' : du + ' days'})` : '') : ''}`) +
+  `<div style="display:flex;gap:8px;margin-bottom:18px;align-items:center;">
+    <button class="btn btn-ghost btn-sm" onclick="nav('induct')">← Sky view</button>
+    <div style="flex:1;"></div>
+    ${CONN.aiKey ? `<button class="btn btn-sec btn-sm" onclick="askDock('For ${p.name.replace(/'/g,'')} at stage ${p.stage}: what remains, what order should we do it in, and what would an inspector query?')">✦ Counsel</button>` : ''}
+    <button class="btn btn-ghost btn-sm" onclick="deleteJourneyPerson('${p.id}')">Remove</button>
+  </div>
+
+  <div style="display:flex;align-items:center;margin:4px 0 22px;">
+    ${JOURNEY_STAGES.map((st, i) => `
+      <div style="display:flex;flex-direction:column;align-items:center;flex:0 0 auto;">
+        <div style="width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;
+          background:${i < idx ? 'var(--grn)' : i === idx ? 'var(--gold)' : 'white'};
+          border:2px solid ${i < idx ? 'var(--grn)' : i === idx ? 'var(--gold)' : 'var(--line2)'};
+          color:${i <= idx ? 'white' : 'var(--t4)'};">${i < idx ? '✓' : st.icon}</div>
+        <div style="font-size:9px;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;margin-top:5px;color:${i === idx ? 'var(--gold)' : i < idx ? 'var(--grn)' : 'var(--t4)'};max-width:92px;text-align:center;">${st.label}</div>
+      </div>
+      ${i < JOURNEY_STAGES.length - 1 ? `<div style="flex:1;height:2.5px;background:${i < idx ? 'var(--grn)' : 'var(--line)'};margin:0 6px 18px;"></div>` : ''}
+    `).join('')}
+  </div>
+
+  ${p.stage === 'confirmed' ? `<div class="card"><div class="card-body" style="text-align:center;padding:28px;">
+      <div style="font-size:30px;">🛡</div>
+      <div style="font-family:var(--serif);font-size:19px;margin:8px 0 4px;">Confirmed in post${p.entered_confirmed ? ' — ' + fD(p.entered_confirmed) : ''}</div>
+      <div style="font-size:12.5px;color:var(--t3);">Every gate passed with dates and evidence below. Ongoing training now lives on the Training Record.</div>
+    </div></div>` :
+  `<div class="card mb-4" style="border-color:${pr.pct === 100 ? 'var(--grn)' : 'var(--line)'};">
+    <div class="card-body" style="display:flex;gap:16px;align-items:center;">
+      ${ringDiv(pr.pct, 54, pr.pct === 100 ? 'var(--grn)' : 'var(--gold)')}
+      <div style="flex:1;">
+        <div style="font-family:var(--serif);font-size:16px;">${pr.pct === 100 ? 'Gate open — every step complete' : `🔒 Gate locked — ${pr.total - pr.done} of ${pr.total} steps remain`}</div>
+        <div style="font-size:11.5px;color:var(--t3);margin-top:2px;">${p.stage === 'prestart' ? 'Nobody works a first shift until this gate opens — Schedule 3 + pre-start training, no exceptions.' : p.stage === 'induction' ? 'Confirmation requires the full 12-week record — shadow shifts and observed competencies signed.' : 'Complete recruitment to move into checks.'}</div>
+      </div>
+      <button class="btn ${pr.pct === 100 ? 'btn-gold' : 'btn-sec'}" ${pr.pct === 100 ? '' : 'disabled style="opacity:0.45;cursor:not-allowed;"'} onclick="advanceJourney('${p.id}')">${idx === 1 ? 'CLEAR TO START →' : idx === 2 ? 'CONFIRM IN POST →' : 'Advance →'}</button>
+    </div>
+  </div>`}
+
+  ${JOURNEY_PHASES.map(ph => {
+    const active = ph.stage === p.stage;
+    const done = ph.steps.filter(s => stepDone(p, s.id)).length;
+    const past = stageIndex(ph.stage) < idx;
+    return `<details ${active ? 'open' : ''} class="card mb-3" style="${past ? 'opacity:0.82;' : ''}">
+      <summary style="cursor:pointer;list-style:none;padding:13px 18px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:13.5px;font-weight:700;flex:1;">${esc(ph.name)}</span>
+        <span class="pill ${done === ph.steps.length ? 'gr' : active ? 'am' : 'gy'}">${done}/${ph.steps.length}</span>
+      </summary>
+      ${ph.steps.map(s => {
+        const st = p.steps[s.id] || {};
+        return `<div style="padding:11px 18px;border-top:1px solid var(--line);display:flex;gap:12px;align-items:flex-start;${st.done || st.na ? 'opacity:0.78;' : ''}">
+          <div onclick="toggleJourneyStep('${p.id}','${s.id}')" title="done → n/a → clear" style="width:23px;height:23px;border-radius:50%;border:2px solid ${st.done ? 'var(--grn)' : st.na ? 'var(--t4)' : 'var(--line2)'};background:${st.done ? 'var(--grn)' : st.na ? 'var(--t4)' : 'white'};color:white;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;flex-shrink:0;">${st.done ? '✓' : st.na ? '–' : ''}</div>
+          <div style="flex:1;">
+            <div style="font-size:12.5px;font-weight:600;">${esc(s.t)}</div>
+            ${s.d ? `<div style="font-size:10.5px;color:var(--t3);margin-top:1px;">${esc(s.d)}</div>` : ''}
+            ${st.note || st.keyDate ? `<div style="font-size:10.5px;color:var(--t3);margin-top:4px;background:var(--paper);border-left:2px solid var(--gold);padding:4px 8px;border-radius:0 5px 5px 0;">${st.keyDate ? `<strong>Key date:</strong> ${fD(st.keyDate)} · ` : ''}${esc(st.note || '')}</div>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-end;flex-shrink:0;">
+            ${st.dt ? `<span style="font-size:9.5px;color:var(--grn);font-weight:700;">✓ ${st.dt}</span>` : ''}
+            <button onclick="journeyStepNote('${p.id}','${s.id}','${esc(s.t).replace(/'/g, '&#39;')}')" style="height:22px;padding:0 8px;border-radius:6px;border:1.5px solid ${st.note || st.keyDate ? 'var(--gold)' : 'var(--line2)'};background:${st.note || st.keyDate ? 'var(--gold-soft)' : 'white'};color:${st.note || st.keyDate ? 'var(--gold)' : 'var(--t4)'};font-size:10.5px;cursor:pointer;">✎ date/note</button>
+          </div>
+        </div>`;
+      }).join('')}
+    </details>`;
+  }).join('')}`;
+}
+
+// Factual seed from the live Monday candidates board
+function seedJourney() {
+  if (localStorage.getItem('lc_people_seeded')) return;
+  if (!PEOPLE.length) {
+    PEOPLE = [
+      { id: 'jp_mel', name: 'Melissa “Mel” Vear', role: 'Administrator', house: 'Head office', startDate: '2026-09-21', stage: 'prestart',
+        steps: { a_app: { done: true, dt: '2026-07-29' }, a_int: { done: true, dt: '2026-08-12', note: 'Interview led by Sophia; Otter + Notetaker records' }, a_dec: { done: true, dt: '2026-08-12' }, a_offer: { done: true, dt: '2026-08-15', note: 'Offer + 4 onboarding forms sent 15 Aug; accepted' } },
+        ts: new Date().toISOString(), mondayId: '3145162217' },
+      { id: 'jp_iqra', name: 'Iqra Khaliq', role: 'House Leader', house: 'TBC', startDate: null, stage: 'prestart',
+        steps: { a_app: { done: true, dt: '2026-07-11' }, a_int: { done: true, dt: '2026-08-17', note: 'Scored 19/28 — panel Waqas, Sophia, Kelly' }, a_dec: { done: true, dt: '2026-08-17', note: 'Recommend' }, a_offer: { done: true, dt: '2026-08-24' } },
+        ts: new Date().toISOString(), mondayId: '3068276665' },
+    ];
+    persistPeople();
+  }
+  try { localStorage.setItem('lc_people_seeded', '1'); } catch (e) {}
 }
 
 // ── BOOT ──────────────────────────────────────────────────────
