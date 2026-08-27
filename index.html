@@ -1755,11 +1755,17 @@ function renderCompliance(m) {
   </div>
   <div class="card">
     ${shown.length ? `<table class="tbl">
-      <tr><th>Action</th><th>Home / Person</th><th>Priority</th><th>Status</th><th>Due</th><th>Evidence</th></tr>
+      <tr><th style="width:34px;"></th><th>Action</th><th>Home / Person</th><th>Priority</th><th>Status</th><th>Due</th><th>Evidence</th></tr>
       ${shown.sort((a,b) => ({'Critical':0,'High':1,'Medium':2,'Low':3}[a.priority] ?? 4) - ({'Critical':0,'High':1,'Medium':2,'Low':3}[b.priority] ?? 4)).map(i => {
         const d = daysUntil(i.due);
         const v = VERIFY_LEVELS[i.verifiedHow];
         return `<tr class="click" onclick="openComplianceItem('${i.id}')">
+          <td onclick="event.stopPropagation();" style="width:34px;">
+            <div onclick="quickDone('${i.id}', this)" title="Mark done in Monday"
+              style="width:22px;height:22px;border-radius:50%;border:2px solid var(--line2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;color:transparent;transition:all 0.15s;"
+              onmouseover="this.style.borderColor='var(--grn)';this.style.color='var(--grn)';"
+              onmouseout="if(!this.dataset.busy){this.style.borderColor='var(--line2)';this.style.color='transparent';}">✓</div>
+          </td>
           <td style="font-weight:600;max-width:340px;">${esc(i.name)}</td>
           <td style="font-size:11.5px;color:var(--t3);">${esc(i.homePerson || '—')}</td>
           <td><span class="pill ${i.priority==='Critical'?'rd':i.priority==='High'?'pu':i.priority==='Medium'?'gr':'gy'}">${i.priority || '—'}</span></td>
@@ -1795,6 +1801,11 @@ function openComplianceItem(id) {
     <button class="btn btn-sec btn-sm" onclick="markStatus('${i.id}','Done')">Mark done ✓</button>
     <a class="btn btn-prim btn-sm" style="text-decoration:none;" target="_blank" href="https://livinghorizon.monday.com/boards/${MONDAY_CONFIG.boards.complianceActions.id}/pulses/${i.id}">Open in Monday →</a>
   `);
+}
+
+async function quickDone(itemId, el) {
+  if (el) { el.dataset.busy = '1'; el.style.borderColor = 'var(--grn)'; el.style.background = 'var(--grn)'; el.style.color = 'white'; }
+  await markStatus(itemId, 'Done');
 }
 
 async function markStatus(itemId, label) {
