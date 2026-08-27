@@ -1171,7 +1171,9 @@ function scanCertRisks() {
   certs.forEach(c => {
     const d = daysUntil(c.expiry);
     const isRisk = (c.renewal === 'OVERDUE' || c.renewal === 'MISSING — no record' || (d !== null && d < 14));
-    if (isRisk && !RISK_REGISTER.find(r => r.certId === c.id && !r.resolved)) {
+    const prior = RISK_REGISTER.find(r => r.certId === c.id);
+    const suppressed = prior && (!prior.resolved || (prior.resolvedAt && (Date.now() - new Date(prior.resolvedAt)) < 60 * 86400000));
+    if (isRisk && !suppressed) {
       RISK_REGISTER.unshift({
         id: 'rk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6),
         certId: c.id,
@@ -1261,6 +1263,7 @@ function renderDash(m) {
               <div style="font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(r.title)}</div>
               <div style="font-size:10.5px;color:var(--t3);margin-top:1px;">${esc(r.detail || '').substring(0, 70)}</div>
             </div>
+            <button onclick="resolveRisk('${r.id}')" title="Resolve — remove from radar" style="width:20px;height:20px;border-radius:6px;border:1px solid var(--line2);background:white;color:var(--t4);font-size:11px;cursor:pointer;flex-shrink:0;" onmouseover="this.style.color='var(--grn)';this.style.borderColor='var(--grn)';" onmouseout="this.style.color='var(--t4)';this.style.borderColor='var(--line2)';">✕</button>
           </div>`).join('') : '<div class="empt" style="padding:20px;">No live risks</div>'}
       </div>
       <div class="card">
@@ -1308,6 +1311,9 @@ function mailRow(e, compact) {
         ${e.risk === 'critical' ? '<span class="risk-flag" style="background:var(--rsf);color:var(--red);">⚠ CRITICAL</span>' :
           e.risk === 'high' ? '<span class="risk-flag" style="background:var(--asf2);color:var(--amb);">HIGH</span>' : ''}
         <span class="mail-time">${relTime(e.date)}</span>
+        <button onclick="event.stopPropagation(); dismissMail('${e.id}')" title="Remove from triage (stays in Gmail)"
+          style="width:20px;height:20px;border-radius:6px;border:1px solid var(--line2);background:white;color:var(--t4);font-size:11px;cursor:pointer;line-height:1;flex-shrink:0;"
+          onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)';" onmouseout="this.style.color='var(--t4)';this.style.borderColor='var(--line2)';">✕</button>
       </div>
       <div class="mail-subj">${esc(e.subject)}</div>
       ${!compact ? `<div class="mail-snip">${esc(e.snippet)}</div>` : ''}
@@ -1429,6 +1435,11 @@ function renderInbox(m) {
   <div class="card">
     ${shown.length ? shown.slice(0, 60).map(e => mailRow(e)).join('') : `<div class="empt">${CONN.gmailToken ? 'No messages in this category' : gmailNeedsOneClick() ? 'Session paused — press ▶ Resume Gmail above' : 'Nothing here yet — connect Gmail and press Scan'}</div>`}
   </div>`;
+}
+
+function dismissMail(id) {
+  const e = EMAILS.find(x => x.id === id);
+  if (e) { e.archived = true; persist(); updateBadges(); render(); toast('Removed from triage — still in your Gmail'); }
 }
 
 function openMail(id) {
@@ -2957,7 +2968,9 @@ async function runOversightSweep() {
   const o = computeOversight();
   o.boards.filter(b => ['safeguarding', 'medErrors', 'incidents', 'safetyCerts', 'complianceActions'].includes(b.key)).forEach(b => {
     b.exceptions.filter(e => e.type === 'overdue' || e.type === 'stuck').slice(0, 3).forEach(e => {
-      if (!RISK_REGISTER.find(r => r.ovId === b.key + e.id + e.type && !r.resolved)) {
+      const priorOv = RISK_REGISTER.find(r => r.ovId === b.key + e.id + e.type);
+      const suppressedOv = priorOv && (!priorOv.resolved || (priorOv.resolvedAt && (Date.now() - new Date(priorOv.resolvedAt)) < 60 * 86400000));
+      if (!suppressedOv) {
         RISK_REGISTER.unshift({
           id: 'rk_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5), ovId: b.key + e.id + e.type,
           ts: new Date().toISOString(), severity: 'high', source: 'oversight',
