@@ -292,6 +292,10 @@ main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 13l2 2 4-4"/></svg>
       PAMMS Audits
     </button>
+    <button class="nav-btn" data-pg="audits" onclick="nav('audits')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/><path d="M8 11l2 2 4-4"/></svg>
+      Mock Audits
+    </button>
     <div class="sb-label">Compliance</div>
     <button class="nav-btn" data-pg="compliance" onclick="nav('compliance')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 12l2 2 4-4"/><path d="M12 3l7 4v5c0 4.4-3 8.5-7 9.5-4-1-7-5.1-7-9.5V7l7-4z"/></svg>
@@ -559,6 +563,7 @@ function render() {
   else if (curPage === 'pushqueue') renderSyncQueue(m);
   else if (curPage === 'regulatory') renderRegulatory(m);
   else if (curPage === 'pamms') renderPamms(m);
+  else if (curPage === 'audits') renderAudits(m);
   else if (curPage === 'compliance') renderCompliance(m);
   else if (curPage === 'certs') renderCerts(m);
   else if (curPage === 'verify') renderVerify(m);
@@ -2140,7 +2145,7 @@ function syncStatePush() {
   clearTimeout(_statePushTimer);
   _statePushTimer = setTimeout(async () => {
     try {
-      const snapshot = { tasks: MY_TASKS, chat: CHAT.slice(-60), risks: RISK_REGISTER.slice(0, 100), drafts: DRAFTS.slice(0, 20), syncQueue: SYNC_QUEUE.slice(0, 40), regChecks: REG_CHECKS, regHouse: REG_HOUSE, pammsAudits: PAMMS_AUDITS };
+      const snapshot = { tasks: MY_TASKS, chat: CHAT.slice(-60), risks: RISK_REGISTER.slice(0, 100), drafts: DRAFTS.slice(0, 20), syncQueue: SYNC_QUEUE.slice(0, 40), regChecks: REG_CHECKS, regHouse: REG_HOUSE, pammsAudits: PAMMS_AUDITS, maAudits: MA_AUDITS };
       await fetch(BACKEND_BASE + '/state', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', 'x-lc-auth': authCode() },
@@ -2167,6 +2172,7 @@ async function syncStatePull() {
       if (d.state.regChecks) { REG_CHECKS = d.state.regChecks; }
       if (d.state.regHouse) { REG_HOUSE = d.state.regHouse; }
       if (Array.isArray(d.state.pammsAudits) && d.state.pammsAudits.length) { PAMMS_AUDITS = d.state.pammsAudits; try { localStorage.setItem('lc_pamms_audits', JSON.stringify(PAMMS_AUDITS)); } catch (e) {} }
+      if (Array.isArray(d.state.maAudits) && d.state.maAudits.length) { MA_AUDITS = d.state.maAudits; try { localStorage.setItem('lc_mock_audits', JSON.stringify(MA_AUDITS)); } catch (e) {} }
       try { localStorage.setItem('lc_reg_checks', JSON.stringify(REG_CHECKS)); localStorage.setItem('lc_reg_house', JSON.stringify(REG_HOUSE)); } catch (e) {}
       localStorage.setItem('lc_state_ts', d.state.updatedAt);
       persistChat(); persist(); updateBadges(); render();
@@ -2334,7 +2340,7 @@ const AI_TOOLS = [
     name: 'get_business_data',
     description: 'Pull detailed live data beyond the snapshot: full email list, all compliance items, every certificate, all tasks, risk register.',
     input_schema: { type: 'object', properties: {
-      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts', 'oversight', 'regulatory', 'pamms_audits'] },
+      area: { type: 'string', enum: ['emails', 'compliance', 'certificates', 'tasks', 'risks', 'drafts', 'oversight', 'regulatory', 'pamms_audits', 'mock_audits'] },
     }, required: ['area'] },
   },
 ];
@@ -2387,6 +2393,14 @@ async function executeAITool(name, input) {
       if (a === 'risks') return { ok: true, msg: JSON.stringify(RISK_REGISTER.filter(r => !r.resolved)) };
       if (a === 'drafts') return { ok: true, msg: JSON.stringify(DRAFTS.slice(0, 10).map(d => ({ to: d.to, subject: d.subject, status: d.status }))) };
       if (a === 'oversight') { const o = computeOversight(); return { ok: true, msg: JSON.stringify({ lastSync: OVERSIGHT_CACHE.lastSync, totals: o.totals, boards: o.boards.map(b => ({ name: b.name, score: b.score, open: b.open, exceptions: b.exceptions.slice(0, 12) })) }) }; }
+      if (a === 'mock_audits') {
+        return { ok: true, msg: JSON.stringify(MA_AUDITS.map(au => {
+          const ov = maOverall(au);
+          const sc = maScale(au.fw);
+          return { framework: AUDIT_LIB[au.fw].name, subject: au.subject, date: au.date, result: sc[ov.band]?.label, pct: ov.pct, rated: ov.rated + '/' + ov.total,
+            weak: Object.entries(au.ratings).filter(([, v]) => v.r && sc[v.r]?.v !== null && sc[v.r].v <= (au.fw === 'cqc' ? 2 : 0.5)).map(([c, v]) => c + (v.note ? ': ' + v.note.slice(0, 90) : '')) };
+        })) };
+      }
       if (a === 'pamms_audits') {
         return { ok: true, msg: JSON.stringify(PAMMS_AUDITS.map(au => {
           const ov = pammsOverall(au);
@@ -3714,6 +3728,381 @@ function renderPamms(m) {
                 </div>
               </div>
               ${r.note ? `<div style="margin:7px 0 0 40px;font-size:11px;color:var(--t3);background:var(--paper);border-left:2.5px solid var(--gold);padding:6px 10px;border-radius:0 6px 6px 0;line-height:1.6;"><strong style="color:var(--t2);">What we found:</strong> ${esc(r.note)}</div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('')}`).join('');
+  })());
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MOCK AUDITS — run any inspection on yourself before they do
+// CQC SAF · Medication · Staff files · Care plans · Premises & fire
+// ═══════════════════════════════════════════════════════════════
+let MA_AUDITS = JSON.parse(localStorage.getItem('lc_mock_audits') || '[]');
+function persistMA() {
+  try { localStorage.setItem('lc_mock_audits', JSON.stringify(MA_AUDITS)); } catch (e) {}
+  if (typeof syncStatePush === 'function') syncStatePush();
+}
+
+// Two rating scales
+const SCALE_CQC = {
+  OUT: { label: 'Outstanding', color: '#1B7A44', short: 'OUT', v: 4 },
+  G:   { label: 'Good', color: '#4C9A2A', short: 'G', v: 3 },
+  RI:  { label: 'Requires Improvement', color: '#B45309', short: 'RI', v: 2 },
+  IN:  { label: 'Inadequate', color: '#C6362E', short: 'IN', v: 1 },
+  NA:  { label: 'Not assessed', color: '#8A8F9C', short: 'N/A', v: null },
+};
+const SCALE_MET = {
+  M:  { label: 'Met', color: '#1B7A44', short: 'MET', v: 1 },
+  PM: { label: 'Partially met', color: '#B45309', short: 'PART', v: 0.5 },
+  NM: { label: 'Not met', color: '#C6362E', short: 'NOT', v: 0 },
+  NA: { label: 'Not applicable', color: '#8A8F9C', short: 'N/A', v: null },
+};
+
+const AUDIT_LIB = {
+  cqc: { name: 'CQC Mock Inspection', icon: '🛡', scale: 'cqc', subject: 'house',
+    desc: 'The Single Assessment Framework — all 34 quality statements, scored with CQC’s real arithmetic',
+    tpl: [
+      { domain: 'SAFE', sections: [ { name: 'Safe — 8 quality statements', stds: [
+        { c: 'S1', t: 'Learning culture — concerns and incidents reported, investigated fairly; lessons learned drive real improvement; near-misses surfaced not hidden' },
+        { c: 'S2', t: 'Safe systems, pathways and transitions — safety managed across moves between services; referral and admission information complete; hospital passports current' },
+        { c: 'S3', t: 'Safeguarding — staff recognise abuse and neglect, refer without delay to the LA, notify CQC; people say they feel safe; lessons from concerns shared' },
+        { c: 'S4', t: 'Involving people to manage risks — positive risk-taking with the person, not blanket restriction; risk assessments live, specific and acted on' },
+        { c: 'S5', t: 'Safe environments — premises, equipment and certificates safe and in date; defects chased and evidenced; fire precautions and PEEPs current' },
+        { c: 'S6', t: 'Safe and effective staffing — enough skilled staff against commissioned hours; safer recruitment complete; induction, training, supervision on cycle' },
+        { c: 'S7', t: 'Infection prevention and control — clean environments, trained staff, PPE available and used, IPC audits actioned' },
+        { c: 'S8', t: 'Medicines optimisation — safe storage, administration, records; PRN protocols known; competencies current; errors reported and learned from' },
+      ]}]},
+      { domain: 'EFFECTIVE', sections: [ { name: 'Effective — 6 quality statements', stds: [
+        { c: 'E1', t: 'Assessing needs — thorough, up-to-date assessment of health and care needs including protected characteristics and communication needs' },
+        { c: 'E2', t: 'Delivering evidence-based care — support follows recognised good practice (PBS, IDDSI, STOMP, NICE where relevant)' },
+        { c: 'E3', t: 'How staff, teams and services work together — effective joint working with CPNs, GPs, social workers, families; information shared appropriately' },
+        { c: 'E4', t: 'Supporting people to live healthier lives — health action plans, annual health checks, screening, healthy choices supported not imposed' },
+        { c: 'E5', t: 'Monitoring and improving outcomes — outcomes tracked per person (skills, community, health); progress visible and celebrated' },
+        { c: 'E6', t: 'Consent to care and treatment — MCA embedded in daily practice; capacity assumed; decision-specific assessments; best-interests recorded; DoLS/CoP where needed' },
+      ]}]},
+      { domain: 'CARING', sections: [ { name: 'Caring — 5 quality statements', stds: [
+        { c: 'C1', t: 'Kindness, compassion and dignity — observed warmth; respectful language in notes; privacy upheld' },
+        { c: 'C2', t: 'Treating people as individuals — culture, faith, identity, relationships and preferences honoured in practice' },
+        { c: 'C3', t: 'Independence, choice and control — people do things for themselves wherever possible; choice is real, not token; advocacy offered' },
+        { c: 'C4', t: 'Responding to people’s immediate needs — distress, pain and anxiety noticed and answered quickly' },
+        { c: 'C5', t: 'Workforce wellbeing and enablement — staff supported, valued and enabled to deliver compassionate care' },
+      ]}]},
+      { domain: 'RESPONSIVE', sections: [ { name: 'Responsive — 7 quality statements', stds: [
+        { c: 'R1', t: 'Person-centred care — the plan is the person’s, changes when they change, and staff know it' },
+        { c: 'R2', t: 'Care provision, integration and continuity — consistent staffing; smooth coordination with other services' },
+        { c: 'R3', t: 'Providing information — accessible formats (easy-read, pictorial); Accessible Information Standard met' },
+        { c: 'R4', t: 'Listening to and involving people — feedback, complaints and compliments invited, acted on, outcomes shared (you-said-we-did)' },
+        { c: 'R5', t: 'Equity in access — support to access services people need, when they need them, including out of hours' },
+        { c: 'R6', t: 'Equity in experiences and outcomes — no group left behind; barriers identified and removed' },
+        { c: 'R7', t: 'Planning for the future — future wishes, transitions and end-of-life preferences explored where appropriate' },
+      ]}]},
+      { domain: 'WELL-LED', sections: [ { name: 'Well-led — 8 quality statements', stds: [
+        { c: 'W1', t: 'Shared direction and culture — vision and values staff can state and show; positive, open culture' },
+        { c: 'W2', t: 'Capable, compassionate and inclusive leaders — visible, knowledgeable leadership; RM in post and effective' },
+        { c: 'W3', t: 'Freedom to speak up — staff raise concerns without fear; whistleblowing understood and used' },
+        { c: 'W4', t: 'Workforce equality, diversity and inclusion — fair treatment; EDI more than a policy' },
+        { c: 'W5', t: 'Governance, management and sustainability — audit cycle runs and closes actions; data flows to decisions; notifications and PIR flawless' },
+        { c: 'W6', t: 'Partnerships and communities — works openly with commissioners, SABs, health partners, families and the community' },
+        { c: 'W7', t: 'Learning, improvement and innovation — improvement is continuous and evidenced, not episodic' },
+        { c: 'W8', t: 'Environmental sustainability — sensible steps on waste, energy and sustainable working' },
+      ]}]},
+    ]},
+  med: { name: 'Medication Audit', icon: '💊', scale: 'met', subject: 'house',
+    desc: 'The monthly medicines audit the PAMMS assessor asked for — storage to governance',
+    tpl: [
+      { domain: 'Medicines management', sections: [
+        { name: 'Storage and security', stds: [
+          { c: 'MS1', t: 'Medicines stored in locked cupboard/room; keys controlled; access restricted to trained staff' },
+          { c: 'MS2', t: 'Room and fridge temperatures recorded daily and within range (15–25°C / 2–8°C); action taken on excursions' },
+          { c: 'MS3', t: 'Controlled drugs in CD cupboard; CD register maintained, two-signature entries, running balance correct' },
+          { c: 'MS4', t: 'Medicines in original packaging with labels intact; no loose or decanted stock' },
+          { c: 'MS5', t: 'Medication room environment safe and clean — flooring, surfaces, lighting (Wingate E03 lesson)' },
+        ]},
+        { name: 'MAR accuracy', stds: [
+          { c: 'MM1', t: 'MAR complete — no unexplained gaps; every administration signed at the time' },
+          { c: 'MM2', t: 'Codes used correctly (refused, hospital, social leave) and follow-up recorded' },
+          { c: 'MM3', t: 'Handwritten MAR entries double-signed and match the prescription' },
+          { c: 'MM4', t: 'Allergies and sensitivities recorded on the MAR and known to staff' },
+          { c: 'MM5', t: 'Variable-dose and time-sensitive medicines given as prescribed with times recorded' },
+        ]},
+        { name: 'PRN — as required', stds: [
+          { c: 'MP1', t: 'A PRN protocol exists for every PRN medicine: indication, dose, interval, daily maximum' },
+          { c: 'MP2', t: 'Staff can describe the protocol without looking it up (the Wingate C07 failure)' },
+          { c: 'MP3', t: 'PRN administration records the reason and the outcome/effectiveness' },
+        ]},
+        { name: 'Stock, supply and disposal', stds: [
+          { c: 'MK1', t: 'Weekly counts match MAR running totals; discrepancies investigated same day' },
+          { c: 'MK2', t: 'Ordering cycle prevents both stock-outs and hoarding; boxes dated on opening' },
+          { c: 'MK3', t: 'Returns/disposals logged and receipted with the pharmacy' },
+        ]},
+        { name: 'Competency and governance', stds: [
+          { c: 'MG1', t: 'Every administering staff member has an in-date annual competency (observed, not just e-learning)' },
+          { c: 'MG2', t: 'Medication errors reported, investigated, staff re-assessed; themes tracked' },
+          { c: 'MG3', t: 'Medication reviews with prescriber happen and are recorded (Whiteleaf cycle evidenced)' },
+          { c: 'MG4', t: 'This audit itself: previous audit actions closed with dates and evidence' },
+        ]},
+      ]},
+    ]},
+  staff: { name: 'Staff File Audit', icon: '📋', scale: 'met', subject: 'person',
+    desc: 'Schedule 3 / Reg 19 — audit one sampled file exactly as an inspector would',
+    tpl: [
+      { domain: 'The Schedule 3 file', sections: [
+        { name: 'Identity and eligibility', stds: [
+          { c: 'SF1', t: 'Photo ID and proof of address on file, certified and dated by the verifier' },
+          { c: 'SF2', t: 'Right-to-work check compliant (share code or manual) with copy retained; sponsor duties evidenced if sponsored' },
+          { c: 'SF3', t: 'Enhanced DBS with Adults’ Barred List obtained BEFORE first shift; number, date and level recorded; within 3-year renewal policy' },
+        ]},
+        { name: 'History and references', stds: [
+          { c: 'SF4', t: 'Application form (not CV alone) with FULL employment history from leaving education' },
+          { c: 'SF5', t: 'Every gap in history explored and the explanation recorded (the item fixed on-the-day at Wingate)' },
+          { c: 'SF6', t: 'Two references including most recent employer; dates match the application; verification trail (email/phone) on file' },
+          { c: 'SF7', t: 'Reason for leaving previous care roles asked and recorded' },
+        ]},
+        { name: 'Suitability and contract', stds: [
+          { c: 'SF8', t: 'Interview record with scored, values-based and safeguarding questions' },
+          { c: 'SF9', t: 'Qualification certificates seen and copied; professional registration verified where claimed' },
+          { c: 'SF10', t: 'Health declaration completed; adjustments considered and documented' },
+          { c: 'SF11', t: 'Signed contract and job description issued before day one' },
+        ]},
+        { name: 'In-role compliance', stds: [
+          { c: 'SF12', t: 'Induction record: Care Certificate progress, policy sign-sheet, shadow shifts signed off before lone working' },
+          { c: 'SF13', t: 'Training matrix entries current for this person — BLS annual, medication competency annual, Oliver McGowan, 3-yearly core' },
+          { c: 'SF14', t: 'Supervision on cycle (quarterly minimum) and last appraisal within 12 months' },
+        ]},
+      ]},
+    ]},
+  careplan: { name: 'Care Plan Audit', icon: '🗂', scale: 'met', subject: 'person',
+    desc: 'One resident’s records, read as an inspector reads them — voice, risk, consent, review',
+    tpl: [
+      { domain: 'The person’s record', sections: [
+        { name: 'Assessment and plan', stds: [
+          { c: 'CP1', t: 'Pre-admission assessment on file covering needs, risks, history, strengths and goals' },
+          { c: 'CP2', t: 'Plan is person-centred and written in a consistent voice; the person’s own words visible (Wingate A01)' },
+          { c: 'CP3', t: 'Likes, dislikes and what a good day looks like are recorded (Wingate A01 recommendation)' },
+          { c: 'CP4', t: 'Mental health relapse indicators and the exact staff actions are written down (Wingate A01 recommendation)' },
+          { c: 'CP5', t: 'Communication needs and accessible-format requirements identified and met' },
+        ]},
+        { name: 'Risk', stds: [
+          { c: 'CR1', t: 'Risk assessments RAG-rated, scored, current, and linked to the care plan (the Wingate strength — keep it)' },
+          { c: 'CR2', t: 'Risks match reality: everything staff actually manage is assessed; nothing assessed is stale' },
+          { c: 'CR3', t: 'PEEP current and matched to the person’s actual mobility and behaviour' },
+        ]},
+        { name: 'Consent and voice', stds: [
+          { c: 'CC1', t: 'Capacity approached decision-by-decision; MCA assessments where indicated; best-interests recorded with the right people' },
+          { c: 'CC2', t: 'Plan signed by the person where appropriate; involvement evidenced, not asserted' },
+          { c: 'CC3', t: 'Monthly review done AND participants named (Wingate A09 recommendation)' },
+        ]},
+        { name: 'Daily practice', stds: [
+          { c: 'CD1', t: 'Daily notes are respectful, specific and current — engagement, mood, professionals, incidents' },
+          { c: 'CD2', t: 'Goals progressed and outcomes recorded — the person is going somewhere, and the record shows it' },
+          { c: 'CD3', t: 'Health appointments supported, outcomes followed up, health action plan current' },
+        ]},
+      ]},
+    ]},
+  premises: { name: 'Premises & Fire Audit', icon: '🏠', scale: 'met', subject: 'house',
+    desc: 'The house walked as an inspector walks it — certificates, fire, environment, defects',
+    tpl: [
+      { domain: 'The building', sections: [
+        { name: 'Certificates in date', stds: [
+          { c: 'PC1', t: 'Gas Safety CP12 in date; copy issued to tenants' },
+          { c: 'PC2', t: 'EICR satisfactory and in date; C1/C2 remedials evidenced complete' },
+          { c: 'PC3', t: 'Legionella RA current; monthly water temperatures logged; unused outlets flushed' },
+          { c: 'PC4', t: 'PAT testing current on provider appliances' },
+        ]},
+        { name: 'Fire safety', stds: [
+          { c: 'PF1', t: 'Fire Risk Assessment current, reviewed after change, every action closed with a date' },
+          { c: 'PF2', t: 'Alarm tested weekly (log complete); annual BS 5839 service certificate' },
+          { c: 'PF3', t: 'Emergency lighting monthly flick-tests logged; annual service done' },
+          { c: 'PF4', t: 'Extinguishers serviced; escape routes clear on the day of this audit' },
+          { c: 'PF5', t: 'Drill within the year covering night-staff scenario; evacuation times recorded; PEEPs current for every resident' },
+        ]},
+        { name: 'Environment and safety file', stds: [
+          { c: 'PE1', t: 'No defects endangering people — doors, flooring, trip hazards (Wingate E03: medication-room flooring)' },
+          { c: 'PE2', t: 'Defects reported to landlord/RP AND the chase trail documented in writing (the evidence the assessor asked for)' },
+          { c: 'PE3', t: 'Window restrictors/TMVs where assessed; hot surfaces managed; garden safe' },
+          { c: 'PE4', t: 'COSHH inventory with data sheets; chemicals stored securely' },
+          { c: 'PE5', t: 'First aid kit stocked and checked; accident book in use and legible' },
+          { c: 'PE6', t: 'BCP present in the grab box AND every staff member on shift can say where it is (Wingate C09)' },
+        ]},
+      ]},
+    ]},
+};
+
+const MA_HOUSES = [...HOMES, 'Wingate Walk'];
+
+function maScale(fw) { return AUDIT_LIB[fw].scale === 'cqc' ? SCALE_CQC : SCALE_MET; }
+
+function maSectionScore(audit, stds) {
+  const sc = maScale(audit.fw);
+  const vals = stds.map(s => audit.ratings[s.c]?.r).filter(r => r && sc[r]?.v !== null && sc[r] !== undefined).map(r => sc[r].v);
+  if (!vals.length) return { pct: null, band: 'NA' };
+  const max = audit.fw === 'cqc' ? 4 : 1;
+  const pct = Math.round(vals.reduce((a, b) => a + b, 0) / (vals.length * max) * 100);
+  let band;
+  if (audit.fw === 'cqc') {
+    // CQC’s published scoring bands
+    band = pct >= 87 ? 'OUT' : pct >= 63 ? 'G' : pct >= 39 ? 'RI' : 'IN';
+  } else {
+    band = pct >= 95 ? 'M' : pct >= 70 ? 'PM' : 'NM';
+  }
+  return { pct, band };
+}
+
+function maOverall(audit) {
+  const lib = AUDIT_LIB[audit.fw];
+  const all = lib.tpl.flatMap(d => d.sections.flatMap(s => s.stds));
+  const rated = all.filter(s => audit.ratings[s.c]?.r).length;
+  const whole = maSectionScore(audit, all);
+  return { rated, total: all.length, ...whole };
+}
+
+function maSetRating(auditId, code, r) {
+  const a = MA_AUDITS.find(x => x.id === auditId);
+  if (!a) return;
+  if (!a.ratings[code]) a.ratings[code] = {};
+  a.ratings[code].r = a.ratings[code].r === r ? null : r;
+  persistMA(); render();
+}
+
+function maNote(auditId, code) {
+  const a = MA_AUDITS.find(x => x.id === auditId);
+  if (!a) return;
+  openModal(`${code} — what we found`, `
+    <textarea id="maNoteIn" style="width:100%;min-height:140px;padding:12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-family:var(--sans);font-size:12.5px;line-height:1.65;outline:none;">${esc(a.ratings[code]?.note || '')}</textarea>
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="maSaveNote('${auditId}','${code}')">Save</button>
+  `);
+}
+function maSaveNote(auditId, code) {
+  const a = MA_AUDITS.find(x => x.id === auditId);
+  if (!a.ratings[code]) a.ratings[code] = {};
+  a.ratings[code].note = document.getElementById('maNoteIn')?.value || '';
+  persistMA(); closeModal(); render();
+}
+
+function maNew(fw) {
+  const lib = AUDIT_LIB[fw];
+  openModal('New ' + lib.name, `
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">${lib.subject === 'house' ? 'House' : lib.fw === 'staff' ? 'Staff member' : 'Subject'}</label>
+    ${lib.subject === 'house'
+      ? `<select id="maSubj" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;background:white;margin-bottom:12px;">${MA_HOUSES.map(h => `<option>${h}</option>`).join('')}</select>`
+      : `<input id="maSubj" type="text" placeholder="${fw === 'staff' ? 'Staff member name or initials' : 'Resident initials (keep records GDPR-clean)'}" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;margin-bottom:12px;">`}
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">Audit date</label>
+    <input id="maDate" type="date" value="${new Date().toISOString().slice(0,10)}" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;">
+  `, `
+    <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
+    <button class="btn btn-prim btn-sm" onclick="maCreate('${fw}')">Start audit</button>
+  `);
+}
+
+function maCreate(fw) {
+  const subj = document.getElementById('maSubj')?.value?.trim() || 'Unnamed';
+  const date = document.getElementById('maDate')?.value || new Date().toISOString().slice(0,10);
+  const a = { id: 'ma_' + Date.now(), fw, subject: subj, date, ratings: {} };
+  MA_AUDITS.unshift(a);
+  persistMA(); closeModal();
+  nav('audits', { fw, aid: a.id });
+}
+
+function maDelete(id) {
+  if (!confirm('Delete this audit?')) return;
+  const a = MA_AUDITS.find(x => x.id === id);
+  MA_AUDITS = MA_AUDITS.filter(x => x.id !== id);
+  persistMA(); nav('audits', { fw: a?.fw });
+}
+
+function maCopy(id) {
+  const a = MA_AUDITS.find(x => x.id === id);
+  if (!a) return;
+  const lib = AUDIT_LIB[a.fw];
+  const sc = maScale(a.fw);
+  const ov = maOverall(a);
+  let md = `# ${lib.name} — ${a.subject}\n${fD(a.date)} · self-audit\nComputed: ${sc[ov.band]?.label || '—'}${ov.pct !== null ? ' (' + ov.pct + '%)' : ''} · ${ov.rated}/${ov.total} standards rated\n`;
+  lib.tpl.forEach(d => {
+    md += `\n## ${d.domain}\n`;
+    d.sections.forEach(s => {
+      const ss = maSectionScore(a, s.stds);
+      md += `\n### ${s.name} — ${sc[ss.band]?.label || 'Not assessed'}${ss.pct !== null ? ' (' + ss.pct + '%)' : ''}\n`;
+      s.stds.forEach(st => {
+        const r = a.ratings[st.c];
+        md += `- **${st.c}** [${r?.r ? sc[r.r].label : 'Unrated'}] ${st.t}\n`;
+        if (r?.note) md += `  - What we found: ${r.note}\n`;
+      });
+    });
+  });
+  navigator.clipboard?.writeText(md).then(() => toast('Audit report copied ✓'));
+}
+
+// ═══ RENDER ═══
+function renderAudits(m) {
+  const fw = curState.fw || 'cqc';
+  const lib = AUDIT_LIB[fw];
+  const fwAudits = MA_AUDITS.filter(a => a.fw === fw);
+  const aid = curState.aid || fwAudits[0]?.id;
+  const audit = fwAudits.find(a => a.id === aid);
+  const sc = maScale(fw);
+
+  m.innerHTML = bc('Regulatory', 'Mock <em>Audits</em>', 'Inspect yourself before anyone else does — five instruments, the same discipline as the PAMMS tool') +
+  `<div class="grid-4 mb-4" style="grid-template-columns:repeat(5,1fr);">
+    ${Object.entries(AUDIT_LIB).map(([k, l]) => {
+      const n = MA_AUDITS.filter(a => a.fw === k).length;
+      return `<div class="kpi ${fw===k?'au':''}" style="cursor:pointer;${fw===k?'border-color:var(--gold);':''}" onclick="nav('audits',{fw:'${k}'})">
+        <div class="kpi-label">${l.icon} ${l.name}</div>
+        <div class="kpi-val" style="font-size:21px;">${n}</div>
+        <div class="kpi-note">audit${n===1?'':'s'} run</div>
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="font-size:12px;color:var(--t3);margin-bottom:14px;">${esc(lib.desc)}</div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+    ${fwAudits.map(a => {
+      const ov = maOverall(a);
+      return `<button class="btn btn-sm ${a.id===aid?'btn-prim':'btn-sec'}" onclick="nav('audits',{fw:'${fw}',aid:'${a.id}'})">
+        ${esc(a.subject)} · ${fD(a.date)} <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc[ov.band]?.color || '#ccc'};margin-left:4px;"></span>
+      </button>`;
+    }).join('')}
+    <button class="btn btn-gold btn-sm" onclick="maNew('${fw}')">+ New ${lib.name.toLowerCase()}</button>
+    <div style="flex:1;"></div>
+    ${audit ? `<button class="btn btn-sec btn-sm" onclick="maCopy('${audit.id}')">📄 Copy report</button>
+      ${CONN.aiKey ? `<button class="btn btn-sec btn-sm" onclick="askDock('Review my current ${lib.name} for ${audit.subject.replace(/'/g, '')} — weakest standards, what an inspector would score, priority fixes.')">✦ Inspector’s eye</button>` : ''}
+      <button class="btn btn-ghost btn-sm" onclick="maDelete('${audit.id}')">Delete</button>` : ''}
+  </div>` +
+  (!audit ? `<div class="card"><div class="empt">No ${lib.name.toLowerCase()} yet — press + New to run the first</div></div>` : (() => {
+    const ov = maOverall(audit);
+    return `<div class="card mb-4"><div class="card-body" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+      <div><div style="font-family:var(--serif);font-size:19px;">${esc(audit.subject)}</div>
+        <div style="font-size:11px;color:var(--t3);">${lib.name} · ${fD(audit.date)}</div></div>
+      <div style="flex:1;"></div>
+      <div style="text-align:center;"><div style="font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);">Computed result</div>
+        <div style="font-family:var(--serif);font-size:21px;color:${sc[ov.band]?.color};font-weight:600;">${sc[ov.band]?.label || '—'}${ov.pct !== null ? ` <span style="font-size:13px;color:var(--t3);">${ov.pct}%</span>` : ''}</div></div>
+      <div style="text-align:center;"><div style="font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);">Standards rated</div>
+        <div style="font-family:var(--serif);font-size:21px;">${ov.rated}<span style="font-size:13px;color:var(--t3);">/${ov.total}</span></div></div>
+    </div></div>` +
+    lib.tpl.map(d => `
+      ${lib.tpl.length > 1 ? `<div style="font-family:var(--serif);font-size:17px;margin:22px 0 10px;">${d.domain}</div>` : ''}
+      ${d.sections.map(s => {
+        const ss = maSectionScore(audit, s.stds);
+        return `<div class="card mb-3">
+          <div class="card-h"><div class="card-t" style="font-size:13px;">${esc(s.name)}</div>
+            <span class="pill" style="margin-left:auto;background:${(sc[ss.band]?.color || '#8A8F9C')}1C;color:${sc[ss.band]?.color || '#8A8F9C'};">${sc[ss.band]?.label || 'Not assessed'}${ss.pct !== null ? ' · ' + ss.pct + '%' : ''}</span></div>
+          ${s.stds.map(st => {
+            const r = audit.ratings[st.c] || {};
+            return `<div style="padding:11px 16px;border-top:1px solid var(--line);">
+              <div style="display:flex;gap:10px;align-items:flex-start;">
+                <span class="mono" style="font-size:10.5px;font-weight:700;color:var(--gold);min-width:34px;padding-top:2px;">${st.c}</span>
+                <div style="flex:1;font-size:12px;line-height:1.6;color:var(--t2);">${esc(st.t)}</div>
+                <div style="display:flex;gap:4px;flex-shrink:0;">
+                  ${Object.entries(sc).map(([k, rm]) => `
+                    <button onclick="maSetRating('${audit.id}','${st.c}','${k}')" title="${rm.label}"
+                      style="min-width:32px;height:24px;padding:0 6px;border-radius:6px;font-size:8.5px;font-weight:800;cursor:pointer;
+                      border:1.5px solid ${r.r===k?rm.color:'var(--line2)'};background:${r.r===k?rm.color:'white'};color:${r.r===k?'white':'var(--t3)'};">${rm.short}</button>`).join('')}
+                  <button onclick="maNote('${audit.id}','${st.c}')" title="What we found" style="height:24px;padding:0 8px;border-radius:6px;border:1.5px solid ${r.note?'var(--gold)':'var(--line2)'};background:${r.note?'var(--gold-soft)':'white'};color:${r.note?'var(--gold)':'var(--t4)'};font-size:11px;cursor:pointer;">✎</button>
+                </div>
+              </div>
+              ${r.note ? `<div style="margin:7px 0 0 44px;font-size:11px;color:var(--t3);background:var(--paper);border-left:2.5px solid var(--gold);padding:6px 10px;border-radius:0 6px 6px 0;line-height:1.6;"><strong style="color:var(--t2);">What we found:</strong> ${esc(r.note)}</div>` : ''}
             </div>`;
           }).join('')}
         </div>`;
