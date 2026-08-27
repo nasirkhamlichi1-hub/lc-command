@@ -288,13 +288,9 @@ main.mn{flex:1;display:flex;flex-direction:column;min-width:0;}
       Regulatory Map
       <span class="nav-badge" id="badgeReg" style="display:none;">0</span>
     </button>
-    <button class="nav-btn" data-pg="pamms" onclick="nav('pamms')">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 13l2 2 4-4"/></svg>
-      PAMMS Audits
-    </button>
     <button class="nav-btn" data-pg="audits" onclick="nav('audits')">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/><path d="M8 11l2 2 4-4"/></svg>
-      Mock Audits
+      Audits
     </button>
     <div class="sb-label">Compliance</div>
     <button class="nav-btn" data-pg="compliance" onclick="nav('compliance')">
@@ -562,7 +558,7 @@ function render() {
   else if (curPage === 'intel') renderIntel(m);
   else if (curPage === 'pushqueue') renderSyncQueue(m);
   else if (curPage === 'regulatory') renderRegulatory(m);
-  else if (curPage === 'pamms') renderPamms(m);
+  else if (curPage === 'pamms') { curState = Object.assign({ fw: 'pamms' }, curState); renderAudits(m); }
   else if (curPage === 'audits') renderAudits(m);
   else if (curPage === 'compliance') renderCompliance(m);
   else if (curPage === 'certs') renderCerts(m);
@@ -2402,9 +2398,9 @@ async function executeAITool(name, input) {
         })) };
       }
       if (a === 'pamms_audits') {
-        return { ok: true, msg: JSON.stringify(PAMMS_AUDITS.map(au => {
-          const ov = pammsOverall(au);
-          return { house: au.house, date: au.date, overall: PAMMS_RATINGS[ov.overall]?.label, rated: ov.rated, total: ov.total,
+        return { ok: true, msg: JSON.stringify(MA_AUDITS.filter(x => x.fw === 'pamms').map(au => {
+          const ov = maOverall(au);
+          return { house: au.subject, date: au.date, overall: SCALE_PAMMS[ov.band]?.label, rated: ov.rated, total: ov.total,
             weak: Object.entries(au.ratings).filter(([, v]) => v.r === 'RI' || v.r === 'P').map(([c, v]) => c + ': ' + (v.note || '').slice(0, 100)) };
         })) };
       }
@@ -3753,6 +3749,13 @@ const SCALE_CQC = {
   IN:  { label: 'Inadequate', color: '#C6362E', short: 'IN', v: 1 },
   NA:  { label: 'Not assessed', color: '#8A8F9C', short: 'N/A', v: null },
 };
+const SCALE_PAMMS = {
+  EX: { label: 'Excellent', color: '#1B7A44', short: 'EX', v: 4 },
+  G:  { label: 'Good', color: '#4C9A2A', short: 'G', v: 3 },
+  RI: { label: 'Requires Improvement', color: '#B45309', short: 'RI', v: 2 },
+  P:  { label: 'Poor', color: '#C6362E', short: 'P', v: 1 },
+  NA: { label: 'Not Assessed', color: '#8A8F9C', short: 'N/A', v: null },
+};
 const SCALE_MET = {
   M:  { label: 'Met', color: '#1B7A44', short: 'MET', v: 1 },
   PM: { label: 'Partially met', color: '#B45309', short: 'PART', v: 0.5 },
@@ -3845,7 +3848,7 @@ const AUDIT_LIB = {
         ]},
       ]},
     ]},
-  staff: { name: 'Staff File Audit', icon: '📋', scale: 'met', subject: 'person',
+  staff: { name: 'Safer Recruitment Audit', icon: '📋', scale: 'met', subject: 'person',
     desc: 'Schedule 3 / Reg 19 — audit one sampled file exactly as an inspector would',
     tpl: [
       { domain: 'The Schedule 3 file', sections: [
@@ -3901,7 +3904,7 @@ const AUDIT_LIB = {
         ]},
       ]},
     ]},
-  premises: { name: 'Premises & Fire Audit', icon: '🏠', scale: 'met', subject: 'house',
+  premises: { name: 'House Compliance Audit', icon: '🏠', scale: 'met', subject: 'house',
     desc: 'The house walked as an inspector walks it — certificates, fire, environment, defects',
     tpl: [
       { domain: 'The building', sections: [
@@ -3928,16 +3931,83 @@ const AUDIT_LIB = {
         ]},
       ]},
     ]},
+  pamms: { name: 'PAMMS Audit', icon: '📐', scale: 'pamms', subject: 'house',
+    desc: 'The full South East Supported Living framework — 73 standards across five domains, as the LA assesses',
+    get tpl() { return PAMMS_TEMPLATE; } },
+  training: { name: 'Training & Competency Audit', icon: '🎓', scale: 'met', subject: 'house',
+    subjects: null, desc: 'The mandatory training standard audited per house or service-wide — cycles, competencies, evidence',
+    tpl: [
+      { domain: 'Training and competency', sections: [
+        { name: 'Statutory cycles in date', stds: [
+          { c: 'TR1', t: 'Basic life support in date for every worker — ANNUAL cycle (the most commonly missed)' },
+          { c: 'TR2', t: 'Medication competency observed and signed within 12 months for every administering worker' },
+          { c: 'TR3', t: 'Oliver McGowan LD & autism training completed at the correct tier for every role' },
+          { c: 'TR4', t: 'Core 3-yearly set in date: H&S, fire, moving & handling, IPC, safeguarding, food hygiene (role-dependent)' },
+          { c: 'TR5', t: 'Fire drill participation within 12 months for every worker including night staff' },
+          { c: 'TR6', t: 'MCA & DoLS working knowledge — trained AND demonstrable in conversation (Wingate C02/C05 lesson)' },
+        ]},
+        { name: 'Person-specific requirements', stds: [
+          { c: 'TP1', t: 'Buccal midazolam: a trained worker on EVERY shift where prescribed — rota cross-checked' },
+          { c: 'TP2', t: 'Dysphagia/IDDSI training before supporting meals where SALT guidance exists' },
+          { c: 'TP3', t: 'PBS training current for staff supporting behaviours of concern' },
+          { c: 'TP4', t: 'Epilepsy awareness where relevant to the people supported' },
+        ]},
+        { name: 'The system', stds: [
+          { c: 'TS1', t: 'Training matrix live and RAG-rated; renewals visible 60 days ahead and chased' },
+          { c: 'TS2', t: 'Certificates on file for sampled courses — completion claims verified against evidence' },
+          { c: 'TS3', t: 'Induction: Care Certificate within 12 weeks for new-to-care; shadow shifts signed before lone working' },
+          { c: 'TS4', t: 'Supervision on cycle (quarterly minimum) and appraisal within 12 months for every worker' },
+          { c: 'TS5', t: 'Trigger-based refreshers evidenced: incident, error or new need brings training forward' },
+        ]},
+      ]},
+    ]},
+  la: { name: 'Local Authority Audit', icon: '🏛', scale: 'met', subject: 'council',
+    subjects: ['Buckinghamshire Council', 'Oxfordshire County Council'],
+    desc: 'Contract-readiness per commissioner — reporting, insurance, safeguarding routes, HB evidence',
+    tpl: [
+      { domain: 'Commissioner readiness', sections: [
+        { name: 'Contract and reporting', stds: [
+          { c: 'LA1', t: 'Contract quality schedule mapped — every KPI, return and meeting diarised with an owner' },
+          { c: 'LA2', t: 'All contract returns submitted on time in the last quarter (evidence the submissions)' },
+          { c: 'LA3', t: 'Serious incidents reported to this commissioner within contract timescales — separate from CQC notification' },
+          { c: 'LA4', t: 'Brokerage/void returns current so referrals keep flowing' },
+          { c: 'LA5', t: 'Fee and uplift correspondence filed; open-book/cost-of-care requests answerable this week' },
+        ]},
+        { name: 'Insurance and assurance', stds: [
+          { c: 'LI1', t: 'Employer’s liability and public liability at contract levels, current, certificates filed WITH the council' },
+          { c: 'LI2', t: 'PAMMS self-assessment current for this council — a request is a same-week return' },
+          { c: 'LI3', t: 'Last quality-monitoring actions from this council closed with evidence' },
+        ]},
+        { name: 'Safeguarding and system', stds: [
+          { c: 'LS1', t: 'This council’s SAB referral route in the safeguarding policy; staff know which LA funds each person' },
+          { c: 'LS2', t: 'LeDeR notification path known and used for any death of a person with LD' },
+          { c: 'LS3', t: 'Named quality-officer relationship live; provider forums attended; good news shared, not just problems' },
+          { c: 'LS4', t: 'HB exempt-accommodation evidence pack per home funded by this council — IHM schedule, landlord status' },
+        ]},
+      ]},
+    ]},
 };
 
 const MA_HOUSES = [...HOMES, 'Wingate Walk'];
+const AUDIT_ORDER = ['cqc', 'pamms', 'premises', 'staff', 'training', 'la', 'med', 'careplan'];
 
-function maScale(fw) { return AUDIT_LIB[fw].scale === 'cqc' ? SCALE_CQC : SCALE_MET; }
+function maScale(fw) { const s = AUDIT_LIB[fw].scale; return s === 'cqc' ? SCALE_CQC : s === 'pamms' ? SCALE_PAMMS : SCALE_MET; }
 
 function maSectionScore(audit, stds) {
   const sc = maScale(audit.fw);
-  const vals = stds.map(s => audit.ratings[s.c]?.r).filter(r => r && sc[r]?.v !== null && sc[r] !== undefined).map(r => sc[r].v);
-  if (!vals.length) return { pct: null, band: 'NA' };
+  const rs = stds.map(s => audit.ratings[s.c]?.r).filter(r => r && sc[r] && sc[r].v !== null);
+  if (!rs.length) return { pct: null, band: 'NA' };
+  if (audit.fw === 'pamms') {
+    // PAMMS precedence — mirrors how the real assessor rated sections
+    let band;
+    if (rs.includes('P')) band = 'P';
+    else if (rs.includes('RI')) band = 'RI';
+    else if (rs.every(r => r === 'EX')) band = 'EX';
+    else band = 'G';
+    const pct = Math.round(rs.map(r => sc[r].v).reduce((a, b) => a + b, 0) / (rs.length * 4) * 100);
+    return { pct, band };
+  }
+  const vals = rs.map(r => sc[r].v);
   const max = audit.fw === 'cqc' ? 4 : 1;
   const pct = Math.round(vals.reduce((a, b) => a + b, 0) / (vals.length * max) * 100);
   let band;
@@ -3954,6 +4024,20 @@ function maOverall(audit) {
   const lib = AUDIT_LIB[audit.fw];
   const all = lib.tpl.flatMap(d => d.sections.flatMap(s => s.stds));
   const rated = all.filter(s => audit.ratings[s.c]?.r).length;
+  if (audit.fw === 'pamms') {
+    // Section bands roll up as the real assessor rolls them
+    const bands = lib.tpl.flatMap(d => d.sections.map(s => maSectionScore(audit, s.stds).band)).filter(b => b !== 'NA');
+    let band = 'NA';
+    if (bands.length) {
+      // Calibrated against the real Wingate Walk report: 4 RI sections of 15 still scored overall Good
+      const ri = bands.filter(b => b === 'RI').length;
+      if (bands.includes('P')) band = 'P';
+      else if (ri > bands.length / 2) band = 'RI';
+      else if (bands.every(b => b === 'EX')) band = 'EX';
+      else band = 'G';
+    }
+    return { rated, total: all.length, pct: null, band };
+  }
   const whole = maSectionScore(audit, all);
   return { rated, total: all.length, ...whole };
 }
@@ -3983,12 +4067,22 @@ function maSaveNote(auditId, code) {
   persistMA(); closeModal(); render();
 }
 
+function maSubjects(fw) {
+  const lib = AUDIT_LIB[fw];
+  if (lib.subjects) return lib.subjects;
+  if (fw === 'training') return [...MA_HOUSES, 'Whole service'];
+  if (lib.subject === 'house') return MA_HOUSES;
+  return null; // free text
+}
+
 function maNew(fw) {
   const lib = AUDIT_LIB[fw];
+  const subjects = maSubjects(fw);
+  const subjLabel = lib.subject === 'house' ? 'House' : lib.subject === 'council' ? 'Council' : fw === 'staff' ? 'Staff member' : 'Subject';
   openModal('New ' + lib.name, `
-    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">${lib.subject === 'house' ? 'House' : lib.fw === 'staff' ? 'Staff member' : 'Subject'}</label>
-    ${lib.subject === 'house'
-      ? `<select id="maSubj" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;background:white;margin-bottom:12px;">${MA_HOUSES.map(h => `<option>${h}</option>`).join('')}</select>`
+    <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">${subjLabel}</label>
+    ${subjects
+      ? `<select id="maSubj" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;background:white;margin-bottom:12px;">${subjects.map(h => `<option>${h}</option>`).join('')}</select>`
       : `<input id="maSubj" type="text" placeholder="${fw === 'staff' ? 'Staff member name or initials' : 'Resident initials (keep records GDPR-clean)'}" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;margin-bottom:12px;">`}
     <label style="font-size:9.5px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;color:var(--t3);display:block;margin-bottom:5px;">Audit date</label>
     <input id="maDate" type="date" value="${new Date().toISOString().slice(0,10)}" style="width:100%;padding:9px 12px;border:1.5px solid var(--line2);border-radius:var(--r3);font-size:13px;">
@@ -3996,6 +4090,24 @@ function maNew(fw) {
     <button class="btn btn-sec btn-sm" onclick="closeModal()">Cancel</button>
     <button class="btn btn-prim btn-sm" onclick="maCreate('${fw}')">Start audit</button>
   `);
+}
+
+function seedWingateMA() {
+  if (MA_AUDITS.some(a => a.id === 'ma_wingate')) return;
+  // Reuse the seeded PAMMS audit data if present, else build it
+  seedWingateAudit();
+  const src = PAMMS_AUDITS.find(a => a.seeded);
+  if (src) {
+    MA_AUDITS.push({ id: 'ma_wingate', fw: 'pamms', subject: 'Wingate Walk', date: src.date, seeded: true, ratings: JSON.parse(JSON.stringify(src.ratings)) });
+  }
+  // Migrate any user-created PAMMS audits from the old page (one-time)
+  if (!localStorage.getItem('lc_pamms_migrated')) {
+    PAMMS_AUDITS.filter(a => !a.seeded).forEach(a => {
+      MA_AUDITS.push({ id: 'ma_mig_' + a.id, fw: 'pamms', subject: a.house, date: a.date, ratings: a.ratings });
+    });
+    try { localStorage.setItem('lc_pamms_migrated', '1'); } catch (e) {}
+  }
+  persistMA();
 }
 
 function maCreate(fw) {
@@ -4036,78 +4148,131 @@ function maCopy(id) {
   navigator.clipboard?.writeText(md).then(() => toast('Audit report copied ✓'));
 }
 
-// ═══ RENDER ═══
+// ═══ RENDER — Audits: domain grid → requirements → run audit ═══
 function renderAudits(m) {
-  const fw = curState.fw || 'cqc';
+  seedWingateMA();
+  const fw = curState.fw;
+  if (!fw) { renderAuditGrid(m); return; }
   const lib = AUDIT_LIB[fw];
   const fwAudits = MA_AUDITS.filter(a => a.fw === fw);
-  const aid = curState.aid || fwAudits[0]?.id;
+  const aid = curState.aid;
   const audit = fwAudits.find(a => a.id === aid);
-  const sc = maScale(fw);
+  if (!audit) { renderAuditLanding(m, fw, lib, fwAudits); return; }
+  renderAuditRun(m, fw, lib, fwAudits, audit);
+}
 
-  m.innerHTML = bc('Regulatory', 'Mock <em>Audits</em>', 'Inspect yourself before anyone else does — five instruments, the same discipline as the PAMMS tool') +
-  `<div class="grid-4 mb-4" style="grid-template-columns:repeat(5,1fr);">
-    ${Object.entries(AUDIT_LIB).map(([k, l]) => {
-      const n = MA_AUDITS.filter(a => a.fw === k).length;
-      return `<div class="kpi ${fw===k?'au':''}" style="cursor:pointer;${fw===k?'border-color:var(--gold);':''}" onclick="nav('audits',{fw:'${k}'})">
-        <div class="kpi-label">${l.icon} ${l.name}</div>
-        <div class="kpi-val" style="font-size:21px;">${n}</div>
-        <div class="kpi-note">audit${n===1?'':'s'} run</div>
+function renderAuditGrid(m) {
+  m.innerHTML = bc('Regulatory', '<em>Audits</em>', 'One instrument per regulatory domain — open it, read the requirements, run the audit') +
+  `<div class="grid-2" style="grid-template-columns:repeat(auto-fill,minmax(340px,1fr));">
+    ${AUDIT_ORDER.map(k => {
+      const l = AUDIT_LIB[k];
+      const sc = maScale(k);
+      const audits = MA_AUDITS.filter(a => a.fw === k);
+      const stds = l.tpl.flatMap(d => d.sections.flatMap(s => s.stds)).length;
+      const last = audits[0];
+      const lastOv = last ? maOverall(last) : null;
+      return `<div class="card" style="cursor:pointer;transition:border 0.15s;" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--line)'" onclick="nav('audits',{fw:'${k}'})">
+        <div class="card-body" style="padding:17px 19px;">
+          <div style="display:flex;align-items:center;gap:11px;margin-bottom:8px;">
+            <div style="font-size:23px;">${l.icon}</div>
+            <div style="flex:1;">
+              <div style="font-family:var(--serif);font-size:15.5px;">${l.name}</div>
+              <div style="font-size:10.5px;color:var(--t3);">${stds} standards · ${audits.length} audit${audits.length===1?'':'s'} run</div>
+            </div>
+            ${last && lastOv ? `<span class="pill" style="background:${(sc[lastOv.band]?.color||'#8A8F9C')}1C;color:${sc[lastOv.band]?.color||'#8A8F9C'};">${sc[lastOv.band]?.label || '—'}</span>` : '<span class="pill gy">not yet run</span>'}
+          </div>
+          <div style="font-size:11.5px;color:var(--t3);line-height:1.6;">${esc(l.desc)}</div>
+          ${last ? `<div style="font-size:10px;color:var(--t4);margin-top:8px;">Latest: ${esc(last.subject)} · ${fD(last.date)}</div>` : ''}
+        </div>
       </div>`;
     }).join('')}
+  </div>`;
+}
+
+function renderAuditLanding(m, fw, lib, fwAudits) {
+  const sc = maScale(fw);
+  const stds = lib.tpl.flatMap(d => d.sections.flatMap(s => s.stds)).length;
+  m.innerHTML = bc('Audits', `${lib.icon} <em>${lib.name.replace(' Audit','')}</em>`, esc(lib.desc)) +
+  `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+    <button class="btn btn-ghost btn-sm" onclick="nav('audits')">← All audits</button>
+    <button class="btn btn-gold" onclick="maNew('${fw}')">▶ Start new audit</button>
+    <div style="flex:1;"></div>
+    <span style="font-size:11px;color:var(--t3);">${stds} standards below — read before you walk the floor</span>
   </div>
-  <div style="font-size:12px;color:var(--t3);margin-bottom:14px;">${esc(lib.desc)}</div>
-  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+  ${fwAudits.length ? `<div class="card mb-4">
+    <div class="card-h"><div class="card-t" style="font-size:13.5px;">Audits run</div><div class="card-sub">${fwAudits.length}</div></div>
     ${fwAudits.map(a => {
       const ov = maOverall(a);
-      return `<button class="btn btn-sm ${a.id===aid?'btn-prim':'btn-sec'}" onclick="nav('audits',{fw:'${fw}',aid:'${a.id}'})">
-        ${esc(a.subject)} · ${fD(a.date)} <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${sc[ov.band]?.color || '#ccc'};margin-left:4px;"></span>
-      </button>`;
+      return `<div style="padding:11px 18px;border-top:1px solid var(--line);display:flex;gap:11px;align-items:center;cursor:pointer;" onclick="nav('audits',{fw:'${fw}',aid:'${a.id}'})">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${sc[ov.band]?.color || '#ccc'};"></span>
+        <strong style="font-size:13px;flex:1;">${esc(a.subject)}</strong>
+        <span style="font-size:11.5px;color:${sc[ov.band]?.color};font-weight:700;">${sc[ov.band]?.label || 'In progress'}${ov.pct !== null && fw !== 'pamms' ? ' · ' + ov.pct + '%' : ''}</span>
+        <span style="font-size:11px;color:var(--t3);">${ov.rated}/${ov.total} rated</span>
+        <span style="font-size:11px;color:var(--t4);">${fD(a.date)}</span>
+        <span style="color:var(--t4);">→</span>
+      </div>`;
     }).join('')}
-    <button class="btn btn-gold btn-sm" onclick="maNew('${fw}')">+ New ${lib.name.toLowerCase()}</button>
+  </div>` : ''}
+  <div style="font-size:9.5px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:var(--gold);margin:6px 0 10px;">The requirements</div>
+  ${lib.tpl.map(d => `
+    ${lib.tpl.length > 1 ? `<div style="font-family:var(--serif);font-size:16px;margin:18px 0 9px;">${d.domain}</div>` : ''}
+    ${d.sections.map(s => `<div class="card mb-3">
+      <div class="card-h"><div class="card-t" style="font-size:13px;">${esc(s.name)}</div><div class="card-sub">${s.stds.length} standards</div></div>
+      ${s.stds.map(st => `<div style="padding:9px 16px;border-top:1px solid var(--line);display:flex;gap:10px;">
+        <span class="mono" style="font-size:10.5px;font-weight:700;color:var(--gold);min-width:34px;">${st.c}</span>
+        <div style="font-size:12px;line-height:1.6;color:var(--t2);">${esc(st.t)}</div>
+      </div>`).join('')}
+    </div>`).join('')}`).join('')}`;
+}
+
+function renderAuditRun(m, fw, lib, fwAudits, audit) {
+  const sc = maScale(fw);
+  const ov = maOverall(audit);
+  m.innerHTML = bc('Audits', `${lib.icon} <em>${lib.name.replace(' Audit','')}</em> — ${esc(audit.subject)}`, `${fD(audit.date)} · rate each standard, note what you found`) +
+  `<div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+    <button class="btn btn-ghost btn-sm" onclick="nav('audits',{fw:'${fw}'})">← ${esc(lib.name)}</button>
+    ${fwAudits.filter(a => a.id !== audit.id).slice(0, 4).map(a => `<button class="btn btn-sec btn-sm" onclick="nav('audits',{fw:'${fw}',aid:'${a.id}'})">${esc(a.subject)} · ${fD(a.date)}</button>`).join('')}
+    <button class="btn btn-gold btn-sm" onclick="maNew('${fw}')">+ New</button>
     <div style="flex:1;"></div>
-    ${audit ? `<button class="btn btn-sec btn-sm" onclick="maCopy('${audit.id}')">📄 Copy report</button>
-      ${CONN.aiKey ? `<button class="btn btn-sec btn-sm" onclick="askDock('Review my current ${lib.name} for ${audit.subject.replace(/'/g, '')} — weakest standards, what an inspector would score, priority fixes.')">✦ Inspector’s eye</button>` : ''}
-      <button class="btn btn-ghost btn-sm" onclick="maDelete('${audit.id}')">Delete</button>` : ''}
-  </div>` +
-  (!audit ? `<div class="card"><div class="empt">No ${lib.name.toLowerCase()} yet — press + New to run the first</div></div>` : (() => {
-    const ov = maOverall(audit);
-    return `<div class="card mb-4"><div class="card-body" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
-      <div><div style="font-family:var(--serif);font-size:19px;">${esc(audit.subject)}</div>
-        <div style="font-size:11px;color:var(--t3);">${lib.name} · ${fD(audit.date)}</div></div>
-      <div style="flex:1;"></div>
-      <div style="text-align:center;"><div style="font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);">Computed result</div>
-        <div style="font-family:var(--serif);font-size:21px;color:${sc[ov.band]?.color};font-weight:600;">${sc[ov.band]?.label || '—'}${ov.pct !== null ? ` <span style="font-size:13px;color:var(--t3);">${ov.pct}%</span>` : ''}</div></div>
-      <div style="text-align:center;"><div style="font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);">Standards rated</div>
-        <div style="font-family:var(--serif);font-size:21px;">${ov.rated}<span style="font-size:13px;color:var(--t3);">/${ov.total}</span></div></div>
-    </div></div>` +
-    lib.tpl.map(d => `
-      ${lib.tpl.length > 1 ? `<div style="font-family:var(--serif);font-size:17px;margin:22px 0 10px;">${d.domain}</div>` : ''}
-      ${d.sections.map(s => {
-        const ss = maSectionScore(audit, s.stds);
-        return `<div class="card mb-3">
-          <div class="card-h"><div class="card-t" style="font-size:13px;">${esc(s.name)}</div>
-            <span class="pill" style="margin-left:auto;background:${(sc[ss.band]?.color || '#8A8F9C')}1C;color:${sc[ss.band]?.color || '#8A8F9C'};">${sc[ss.band]?.label || 'Not assessed'}${ss.pct !== null ? ' · ' + ss.pct + '%' : ''}</span></div>
-          ${s.stds.map(st => {
-            const r = audit.ratings[st.c] || {};
-            return `<div style="padding:11px 16px;border-top:1px solid var(--line);">
-              <div style="display:flex;gap:10px;align-items:flex-start;">
-                <span class="mono" style="font-size:10.5px;font-weight:700;color:var(--gold);min-width:34px;padding-top:2px;">${st.c}</span>
-                <div style="flex:1;font-size:12px;line-height:1.6;color:var(--t2);">${esc(st.t)}</div>
-                <div style="display:flex;gap:4px;flex-shrink:0;">
-                  ${Object.entries(sc).map(([k, rm]) => `
-                    <button onclick="maSetRating('${audit.id}','${st.c}','${k}')" title="${rm.label}"
-                      style="min-width:32px;height:24px;padding:0 6px;border-radius:6px;font-size:8.5px;font-weight:800;cursor:pointer;
-                      border:1.5px solid ${r.r===k?rm.color:'var(--line2)'};background:${r.r===k?rm.color:'white'};color:${r.r===k?'white':'var(--t3)'};">${rm.short}</button>`).join('')}
-                  <button onclick="maNote('${audit.id}','${st.c}')" title="What we found" style="height:24px;padding:0 8px;border-radius:6px;border:1.5px solid ${r.note?'var(--gold)':'var(--line2)'};background:${r.note?'var(--gold-soft)':'white'};color:${r.note?'var(--gold)':'var(--t4)'};font-size:11px;cursor:pointer;">✎</button>
-                </div>
+    <button class="btn btn-sec btn-sm" onclick="maCopy('${audit.id}')">📄 Copy report</button>
+    ${CONN.aiKey ? `<button class="btn btn-sec btn-sm" onclick="askDock('Review my current ${lib.name} for ${audit.subject.replace(/'/g, '')} — weakest standards, what an inspector would score, priority fixes.')">✦ Inspector’s eye</button>` : ''}
+    ${!audit.seeded ? `<button class="btn btn-ghost btn-sm" onclick="maDelete('${audit.id}')">Delete</button>` : ''}
+  </div>
+  <div class="card mb-4"><div class="card-body" style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
+    <div><div style="font-family:var(--serif);font-size:19px;">${esc(audit.subject)}</div>
+      <div style="font-size:11px;color:var(--t3);">${lib.name} · ${fD(audit.date)}${audit.seeded ? ' · real assessment (seeded)' : ''}</div></div>
+    <div style="flex:1;"></div>
+    <div style="text-align:center;"><div style="font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);">Computed result</div>
+      <div style="font-family:var(--serif);font-size:21px;color:${sc[ov.band]?.color};font-weight:600;">${sc[ov.band]?.label || '—'}${ov.pct !== null && fw !== 'pamms' ? ` <span style="font-size:13px;color:var(--t3);">${ov.pct}%</span>` : ''}</div></div>
+    <div style="text-align:center;"><div style="font-size:9px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:var(--t3);">Standards rated</div>
+      <div style="font-family:var(--serif);font-size:21px;">${ov.rated}<span style="font-size:13px;color:var(--t3);">/${ov.total}</span></div></div>
+  </div></div>` +
+  lib.tpl.map(d => `
+    ${lib.tpl.length > 1 ? `<div style="font-family:var(--serif);font-size:17px;margin:22px 0 10px;">${d.domain}</div>` : ''}
+    ${d.sections.map(s => {
+      const ss = maSectionScore(audit, s.stds);
+      return `<div class="card mb-3">
+        <div class="card-h"><div class="card-t" style="font-size:13px;">${esc(s.name)}</div>
+          <span class="pill" style="margin-left:auto;background:${(sc[ss.band]?.color || '#8A8F9C')}1C;color:${sc[ss.band]?.color || '#8A8F9C'};">${sc[ss.band]?.label || 'Not assessed'}${ss.pct !== null && fw !== 'pamms' ? ' · ' + ss.pct + '%' : ''}</span></div>
+        ${s.stds.map(st => {
+          const r = audit.ratings[st.c] || {};
+          return `<div style="padding:11px 16px;border-top:1px solid var(--line);">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <span class="mono" style="font-size:10.5px;font-weight:700;color:var(--gold);min-width:34px;padding-top:2px;">${st.c}</span>
+              <div style="flex:1;font-size:12px;line-height:1.6;color:var(--t2);">${esc(st.t)}</div>
+              <div style="display:flex;gap:4px;flex-shrink:0;">
+                ${Object.entries(sc).map(([k, rm]) => `
+                  <button onclick="maSetRating('${audit.id}','${st.c}','${k}')" title="${rm.label}"
+                    style="min-width:32px;height:24px;padding:0 6px;border-radius:6px;font-size:8.5px;font-weight:800;cursor:pointer;
+                    border:1.5px solid ${r.r===k?rm.color:'var(--line2)'};background:${r.r===k?rm.color:'white'};color:${r.r===k?'white':'var(--t3)'};">${rm.short}</button>`).join('')}
+                <button onclick="maNote('${audit.id}','${st.c}')" title="What we found" style="height:24px;padding:0 8px;border-radius:6px;border:1.5px solid ${r.note?'var(--gold)':'var(--line2)'};background:${r.note?'var(--gold-soft)':'white'};color:${r.note?'var(--gold)':'var(--t4)'};font-size:11px;cursor:pointer;">✎</button>
               </div>
-              ${r.note ? `<div style="margin:7px 0 0 44px;font-size:11px;color:var(--t3);background:var(--paper);border-left:2.5px solid var(--gold);padding:6px 10px;border-radius:0 6px 6px 0;line-height:1.6;"><strong style="color:var(--t2);">What we found:</strong> ${esc(r.note)}</div>` : ''}
-            </div>`;
-          }).join('')}
-        </div>`;
-      }).join('')}`).join('');
-  })());
+            </div>
+            ${r.note ? `<div style="margin:7px 0 0 44px;font-size:11px;color:var(--t3);background:var(--paper);border-left:2.5px solid var(--gold);padding:6px 10px;border-radius:0 6px 6px 0;line-height:1.6;"><strong style="color:var(--t2);">What we found:</strong> ${esc(r.note)}</div>` : ''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}`).join('');
 }
 
 // ── BOOT ──────────────────────────────────────────────────────
